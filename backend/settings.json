@@ -1,0 +1,14 @@
+{
+  "schema": {
+      "supporters": "supporters",
+      "htmls": "htmls",
+      "metadata": "metadata",
+      "anomalies": "anomalies",
+      "stats": "trexstats"
+  },
+  "mongoHost": "localhost",
+  "mongoPort": "27017",
+  "mongoDb": "quintrex",
+  "port": 13000,
+  "interface": "127.0.0.1"
+}

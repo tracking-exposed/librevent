@@ -1,0 +1,44 @@
+{
+  "manifest_version": 2,
+
+  "name": "librevent",
+
+  "short_name": "librevent",
+  "description": "A tool for manage, access, fetch and organize events stored on fediverse protocol",
+  "version": "0.1.0",
+  "author": "This code is inherit from Tracking Exposed extension and maintain by Claudio Agosti",
+
+  "icons": {
+    "16": "librevent-16.png",
+    "48": "librevent-48.png",
+    "128": "librevent-128.png"
+  },
+
+  "browser_action": {
+    "default_icon": "librevent-16.png",
+    "default_popup": "popup.html"
+  },
+
+  "permissions": [
+    "storage",
+    "https://*.facebook.com/"
+  ],
+
+  "background": {
+    "scripts": ["./background.js"],
+    "persistent": false
+  },
+
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.facebook.com/*"
+      ],
+      "js": ["./app.js"]
+    }
+  ],
+
+  "web_accessible_resources": [
+      "*.png"
+  ]
+}
