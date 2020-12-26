@@ -109,6 +109,20 @@ async function processEvents(req) {
     }};
 };
 
+async function returnEvent(req) {
+
+    const eventId = _.parseInt(req.params.eventId);
+    const mongoc = await mongo3.clientConnect();
+    const event = await mongo3.readLimit(mongoc, nconf.get('schema').metadata, {
+        eventId
+    }, { savingTime: -1}, 30, 0);
+    debug("Fetched %d event(s) for %d", _.size(event), eventId);
+    await mongoc.close();
+    const ready = _.map(event, function(e) { return _.omit(e, ['_id', 'publicKey']) });
+    return { json: ready };
+};
+
 module.exports = {
     processEvents,
+    returnEvent,
 };

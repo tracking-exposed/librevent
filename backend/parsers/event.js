@@ -17,6 +17,16 @@ function mine(envelope, previous) {
 		return memo;
 	}, []);
 
+	const x = _.last(_.orderBy(bordered, 'testsize'));
+	const cleanlinks = x.node.querySelectorAll('a[role="link"]');
+	const linkcombo = _.map(cleanlinks, function(n) {
+		return {
+			text: n.textContent,
+			href: n.getAttribute('href')
+		};
+	});
+
+
 	const potexts = _.map(envelope.jsdom.querySelectorAll("span[dir='auto'] > div"), function(n) {
 		// too many mixed data appears here 
 		return n.textContent;
@@ -25,13 +35,8 @@ function mine(envelope, previous) {
 	return {
 		eventTime,
 		eventTitle,
+		linkcombo,
 		eventId,
-		links: _.map(links, function(n) {
-			return {
-				text: n.textContent,
-				href: n.getAttribute('href')
-			};
-		})
 	};
 }
 

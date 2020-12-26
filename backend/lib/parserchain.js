@@ -26,33 +26,13 @@ module.exports = {
 
 function buildMetadata(entry) {
     // this contains the original .source (html, impression, timeline), the .findings and .failures 
-    const metadata = _.pick(entry.source.html, ['id', 'timelineId']);
+    let metadata = _.omit(entry.source.html, ['_id', 'clientTime', 'processed' ]);
     metadata.savingTime = new Date(entry.source.html.savingTime);
     metadata.when = new Date();
-    metadata.impressionOrder = entry.source.impression.impressionOrder;
-    metadata.impressionTime = entry.source.impression.impressionTime;
-    metadata.texts = _.filter(_.get(entry, 'findings.textChains.uniques', []), function(t) {
-        return ( _.size(t) > MINIMUM_SIZE_WORTHY_TEXT );
-    });
-    metadata.semanticId = utils.hash({ t: JSON.stringify(metadata.texts) });
-    metadata.images = _.map(_.get(entry, 'findings.imageChains.images', []), function(io) {
-        return _.pick(io, ['linktype', 'src', 'height', 'width']);
-    });
-    metadata.hrefs = _.reduce(_.get(entry, 'findings.hrefChains.hrefs', []), function(memo, hi) {
-        /* reduce because is a filter + map transformation */
-        if(_.size(hi.text) === 0)
-            return memo;
-        memo.push(_.pick(hi, ['linktype', 'href', 'text']));
-        return memo;
-    }, []);
-    metadata.meaningfulId = _.get(entry, 'findings.meaningfulId', []);
-    metadata.complete = (_.reduce(metadata.meaningfulId, function(memo, e) { return (memo+(_.size(e)?1:0)) }, 0) > 1);
-    metadata.publisherName = _.get(entry, 'findings.attributions.publisherName');
-    metadata.geoip = _.get(entry, 'source.timeline.geoip');
-    metadata.nature = entry.findings.nature;
-    metadata.pseudo = entry.source.supporter.pseudo;
-    metadata.paadc = _.get(entry, 'source.impression.paadc');
-    metadata.userId = entry.source.supporter.userId;
+    metadata = _.merge(metadata, _.get(entry, 'findings.event', {}));
+    metadata = _.merge(metadata, _.get(entry, 'findings.preview', {}));
+    if(metadata.eventId)
+        metadata.eventId = _.parseInt(metadata.eventId);
     return metadata;
 }
 
@@ -106,9 +86,7 @@ function wrapDissector(dissectorF, dissectorName, source, envelope) {
     try {
         // this function pointer point to all the functions in parsers/*
         // as argument they take function(source ({.jsdom, .html}, previous {...}))
-        debug("Invoking %s", dissectorName);
         let retval = dissectorF(source, envelope.findings);
-        debug("--> %j", retval);
         let resultIndicator = JSON.stringify(retval).length;
         _.set(envelope.log, dissectorName, resultIndicator);
         return retval;

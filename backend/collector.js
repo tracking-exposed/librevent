@@ -8,7 +8,7 @@ const debug = require('debug')('collector');
 const nconf = require('nconf');
 const cors = require('cors');
 
-const { processEvents } = require('./lib/api');
+const { processEvents, returnEvent } = require('./lib/api');
 
 const cfgFile = "./settings.json";
 const redOn = "\033[31m";
@@ -26,12 +26,12 @@ if(nconf.get('FBTREX') !== 'production') {
     debug("Production execution!");
 }
 
-async function iowrapper(req, res) {
+async function iowrapper(what, req, res) {
 
-    debugger;
-
-    /* this is the only API at the moment */
-    const httpresult = await processEvents(req, res);
+    /* there are only two APIs at the moment,  */
+    const httpresult = what == 'input' ? 
+        await processEvents(req, res) :
+        await returnEvent(req, res);
 
     if(_.isObject(httpresult.headers))
         _.each(httpresult.headers, function(value, key) {
@@ -59,10 +59,18 @@ app.use(cors());
 app.use(bodyParser.json({limit: '4mb'}));
 app.use(bodyParser.urlencoded({limit: '4mb', extended: true}));
 
-/* This is the only API, to collect the event HTML */
+/* This POST only API, to collect the event HTML */
 app.post('/api/v:version/events', async function(req, res) {
     try {
-        await iowrapper(req, res);
+        await iowrapper('input', req, res);
+    } catch(error) {
+        debug("iowrapper Trigger an Exception %s", error);
+    };
+});
+/* This GET only API, to collect the event HTML */
+app.get('/api/v1/events/:eventId', async function(req, res) {
+    try {
+        await iowrapper('output', req, res);
     } catch(error) {
         debug("iowrapper Trigger an Exception %s", error);
     };
