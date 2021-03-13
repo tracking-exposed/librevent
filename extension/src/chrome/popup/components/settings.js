@@ -1,10 +1,9 @@
 import React from 'react';
 import _ from 'lodash';
-import createReactClass from 'create-react-class';
 
 import Switch from '@material-ui/core/Switch';
 import ListItemIcon from '@material-ui/core/ListItemIcon';
-import TimelineIcon from '@material-ui/icons/Timeline';
+import PowerSettingsNewIcon from '@material-ui/icons/PowerSettingsNew'
 import ListItemSecondaryAction from '@material-ui/core/ListItemSecondaryAction';
 import ListItemText from '@material-ui/core/ListItemText';
 import ListItem from '@material-ui/core/ListItem';
@@ -43,7 +42,7 @@ class Settings extends React.Component{
           <List component="nav" aria-label="main settings">
             <ListItem>
               <ListItemIcon>
-                <TimelineIcon />
+                <PowerSettingsNewIcon fontSize="large" color={ (!!this.state && !!this.state.active) ? 'primary' : 'disabled' } />
               </ListItemIcon>
               <ListItemText primary={ (!!this.state && !!this.state.active) ? "Enabled" : "Disabled"} />
               <ListItemSecondaryAction>

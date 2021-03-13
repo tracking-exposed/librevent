@@ -4,18 +4,19 @@ const server = require('http').Server(app);
 const _ = require('lodash');
 const moment = require('moment');
 const bodyParser = require('body-parser');
-const debug = require('debug')('collector');
+const debug = require('debug')('quintrex:collector');
 const nconf = require('nconf');
 const cors = require('cors');
 
 const { processEvents, returnEvent } = require('./lib/api');
+const mongo3 = require('./lib/mongo3');
 
 const cfgFile = "./settings.json";
 const redOn = "\033[31m";
 const redOff = "\033[0m";
 
 nconf.argv().env().file({ file: cfgFile });
-console.log(redOn + "ઉ nconf loaded, using " + cfgFile + redOff);
+console.log(`${redOn} ઉ nconf loaded, using ${cfgFile} ${redOff} db: ${nconf.get('mongoDb')}`);
 
 if(nconf.get('FBTREX') !== 'production') {
     debug("Because $FBTREX is not 'production', it is assumed be 'development'");
@@ -76,4 +77,13 @@ app.get('/api/v1/events/:eventId', async function(req, res) {
     };
 });
 
-console.log("This alpha stage software do not check if mongodb is running: we hope it does!");
+(async function() {
+    try {
+        await mongo3.checkMongoWorks();
+        console.log("MongoDb connection works!");
+    } catch(error) {
+        console.log("Can't connect to database? Check", cfgFile, error.message);
+        process.exit(1);
+    };
+})();
+

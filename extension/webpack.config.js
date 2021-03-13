@@ -81,8 +81,8 @@ const DEV_PLUGINS = [
         // My notification daemon displays "critical" messages only.
         // Dunno if this is the case for every Ubuntu machine.
         urgency: 'critical',
-        title: 'evicoas',
-        contentImage: path.join(__dirname, 'icons', 'evicoas128.png'),
+        title: 'quintrex',
+        contentImage: path.join(__dirname, 'icons', 'librevent-128.png'),
         timeout: 2,
         alwaysNotify: true
     })

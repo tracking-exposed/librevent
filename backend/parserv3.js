@@ -2,9 +2,9 @@
 const { parse } = require('cookie');
 const _ = require('lodash');
 const moment = require('moment');
-const debug = require('debug')('fbtrex:parserv3');
-const debuge = require('debug')('fbtrex:parserv3:error');
-const overflowReport = require('debug')('fbtrex:OVERFLOW');
+const debug = require('debug')('quintrex:parserv');
+const debuge = require('debug')('quintrex:parserv:error');
+const overflowReport = require('debug')('quintrex:OVERFLOW');
 const nconf = require('nconf');
 
 /* pchain is the utility modeuly for the parser chain */

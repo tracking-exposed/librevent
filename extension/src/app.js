@@ -5,6 +5,7 @@ import _ from 'lodash';
 import {createPanel} from './panel';
 import config from './config';
 import hub from './hub';
+import trexSVG from './trexSVG';
 import { registerHandlers } from './handlers/index';
 
 // bo is the browser object, in chrome is named 'chrome', in firefox is 'browser'
@@ -39,7 +40,7 @@ function boot () {
     // Lookup the current user and decide what to do.
     localLookup(response => {
         // `response` contains the user's public key, we save it global for the blinks
-        console.log("app.js gets", response, "from localLookup");
+        console.log("librevent main got", response, "from localLookup");
 
         /* these parameters are loaded from localstorage */
         config.publicKey = response.publicKey;
@@ -47,7 +48,7 @@ function boot () {
         config.ux = response.ux;
 
         if(config.active !== true) {
-            console.log("evicoas is disabled!"); // TODO some UX change
+            console.log("librevent disabled!"); // TODO some UX change
             return null;
         }
 
@@ -105,14 +106,15 @@ function hrefUpdateMonitor () {
 
     // continue the step, if new, clean cache 
     if (diff) {
-        phase('video.seen');
         cleanCache();
         randomUUID = Math.random().toString(36).substring(2, 15) +
             Math.random().toString(36).substring(2, 15);
     }
 
     if(!meaningfulCachedDifference(elem)) return;
-    phase('video.send');
+    // phase('event.collected');
+    console.log("trying 'b-cos")
+    eventSeen()
 
     hub.event('newContent', {
         element: elem.outerHTML,
@@ -180,8 +182,8 @@ bo.runtime.sendMessage({type: 'chromeConfig'}, (response) => {
  * the function below is called in the code, when the condition is
  * met, and make append the proper span */
 var phases = {
-    'adv': {'seen': advSeen },
-    'video': {'seen': videoSeen, 'wait': videoWait, 'send': videoSend},
+    'eventlist': {'collected': listSeen },
+    'event': {'collected': eventSeen },
     'counters': {
         'adv': { seen: 0 },
         'video': { seen: 0, wait: 0, send: 0}
@@ -253,11 +255,22 @@ function videoSeen (path) {
     return;
     config.blinks[VIDEO_SEEN]();
 }
-function videoSend (path) {
+function eventSeen(path) {
+    const logomain = document.querySelector('[role="banner"');
+    if(!logomain || !logomain.childNodes || !logomain.childNodes[0] ) {
+        console.log("problem no logomain")
+        return;
+    }
+    const svg = logomain.querySelector('svg');
+    const saved = svg.outerHTML;
+    svg.outerHTML = trexSVG;
+    window.setTimeout(function() {
+        console.log("resetting html back in place");
+        svg.outerHTML = saved;
+    }, 300);
     return;
-    config.blinks[VIDEO_SEND]();
 }
-function advSeen (path) {
+function listSeen(path) {
     return;
     config.blinks[SEEN_ADV]();
 };

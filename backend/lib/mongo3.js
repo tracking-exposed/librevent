@@ -161,6 +161,19 @@ async function aggregate(mongoc, cName, pipeline) {
         .toArray();
 };
 
+
+async function checkMongoWorks() {
+    try {
+        const mongoc = await clientConnect({concurrency: 1});
+        const results = await listCollections(mongoc);
+        await mongoc.close();
+        return results;
+    } catch(error) {
+        debug("Failure in checkMongoWorks: %s", error.message);
+        throw error;
+    }
+};
+
 module.exports = {
     clientConnect,
     mongoUri,
@@ -178,4 +191,6 @@ module.exports = {
     createIndex,
     distinct,
     aggregate,
+
+    checkMongoWorks
 };
