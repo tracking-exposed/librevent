@@ -1,6 +1,6 @@
 {
   "name": "librevent",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Librevent is an extension that helps Fediverse users in accessing to online event aggregators and publish content con that network",
   "homepage": "https://quickened.interoperability.tracking.exposed",
   "license": "AGPL-3.0",

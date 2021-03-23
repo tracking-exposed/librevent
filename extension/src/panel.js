@@ -1,3 +1,5 @@
+import { css } from "jquery";
+
 const infoIconSVG = `
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
   <circle cx="12" cy="12" r="10" fill="white"/>
@@ -29,7 +31,7 @@ export function createElement (tag, cssProp = {}, parent = document.body, id = n
 
 const containerCSS = {
   position: 'absolute',
-  top: '0rem',
+  top: '50rem',
   left: '0rem',
   display: 'flex',
   flexDirection: 'column',
@@ -72,7 +74,7 @@ function getIsFullScreen () {
 export function createPanel (events, helpBody = '') {
   const alreadyInitializedPanel = [...document.querySelectorAll('#panel')]
   if (alreadyInitializedPanel.length > 0) {
-    console.warn('YTTREX > panel ===}> panel is already initialized, maybe extension reloaded twice?');
+    // console.warn('EVICOAS > panel ===}> panel is already initialized, maybe extension reloaded twice?');
     alreadyInitializedPanel.forEach(p => document.body.removeChild(p));
   }
 
@@ -90,6 +92,9 @@ export function createPanel (events, helpBody = '') {
       transition: 'all 0.3s ease'
     }, container, eventName);
     eventIcon.innerHTML = trexIconSVG(gray);
+    eventIcon.addEventListener('click', () => {
+      console.log("aaalllaaa");
+    });
     return [eventName, eventIcon, val];
   });
 

@@ -5,7 +5,7 @@
 
   "short_name": "librevent",
   "description": "A tool for manage, access, fetch and organize events stored on fediverse protocol",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "author": "This code is inherit from Tracking Exposed extension and maintain by Claudio Agosti",
 
   "icons": {
