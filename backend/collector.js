@@ -52,13 +52,14 @@ async function iowrapper(what, req, res) {
     }
 };
 
-server.listen(nconf.get('port'), nconf.get('interface'));
-debug("Listening on http://%s:%s", nconf.get('interface'), nconf.get('port'));
-
 /* configuration of express4 */
-app.use(cors());
-app.use(bodyParser.json({limit: '4mb'}));
-app.use(bodyParser.urlencoded({limit: '4mb', extended: true}));
+const LIMIT="11mb";
+app.use(express.json({limit: LIMIT}));
+app.use(express.urlencoded({limit: LIMIT, extended: true, parameterLimit: 50000}));
+server.listen(nconf.get('port'), nconf.get('interface'));
+console.log(
+  ` Listening on http://${nconf.get("interface")}:${nconf.get("port")}, cfg limit of ${LIMIT}`,
+);
 
 /* This POST only API, to collect the event HTML */
 app.post('/api/v:version/events', async function(req, res) {
@@ -80,10 +81,9 @@ app.get('/api/v1/events/:eventId', async function(req, res) {
 (async function() {
     try {
         await mongo3.checkMongoWorks();
-        console.log("MongoDb connection works!");
+        console.log(" MongoDb connection works!");
     } catch(error) {
         console.log("Can't connect to database? Check", cfgFile, error.message);
         process.exit(1);
     };
 })();
-

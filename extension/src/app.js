@@ -154,7 +154,7 @@ function localLookup (callback) {
     {
       type: 'localLookup',
       payload: {
-        userId: 'mnemonic', // at the moment is fixed to 'local'
+        userId: 'local', // at the moment is fixed to 'local'
       }
     },
     callback,
