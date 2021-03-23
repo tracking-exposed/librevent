@@ -108,7 +108,7 @@ async function main() {
   // not true anymore, and 'localbrowser' function isn't invoked anymore.
 
   const cwd = process.cwd();
-  const dist = path.resolve(path.join(cwd, 'extension', 'dist'));
+  const dist = path.resolve(path.join(cwd, 'extension-place'));
 
   if(!fs.existsSync(dist)) {
     console.log('Directory '+ dist +' not found, please download:');
