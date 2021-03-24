@@ -61,8 +61,9 @@ console.log(
   ` Listening on http://${nconf.get("interface")}:${nconf.get("port")}, cfg limit of ${LIMIT}`,
 );
 
+app.options('/api/v2/events', cors()) // enable pre-flight request for POST request as it has special headers
 /* This POST only API, to collect the event HTML */
-app.post('/api/v:version/events', async function(req, res) {
+app.post('/api/v2/events', cors(), async function(req, res) {
     try {
         await iowrapper('input', req, res);
     } catch(error) {
@@ -70,7 +71,7 @@ app.post('/api/v:version/events', async function(req, res) {
     };
 });
 /* This GET only API, to collect the event HTML */
-app.get('/api/v1/events/:eventId', async function(req, res) {
+app.get('/api/v2/events/:eventId', cors(), async function(req, res) {
     try {
         await iowrapper('output', req, res);
     } catch(error) {

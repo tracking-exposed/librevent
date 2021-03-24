@@ -137,7 +137,7 @@ function hrefUpdateMonitor () {
   phase('video.send');
 
   console.debug(JSON.stringify(phases.counters.video));
-  hub.event('newVideo', {
+  hub.event('newContent', {
     element: elem.outerHTML,
     href: window.location.href,
     when: Date(),
