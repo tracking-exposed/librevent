@@ -10,11 +10,26 @@ module.exports = {
     /* this sequence is executed in this order.
      * after the newline there are modules that levegared on previously mined metadata */
     dissectorList: [
-        'event',
+        'nature',
+        'textChains',
+        'hrefChains',
+        'imageChains',
         'preview',
+        'post',
+        'meaningfulId',
+        'attributions',
     ],
+
     event: require('../parsers/event'),
     preview: require('../parsers/preview'),
+    meaningfulId: require('../parsers/meaningfulId'),
+    event: require('../parsers/event'),
+    post: require('../parsers/post'),
+    nature: require('../parsers/nature'),
+    textChains: require('../parsers/textChains'),
+    hrefChains: require('../parsers/hrefChains'),
+    imageChains: require('../parsers/imageChains'),
+    attributions: require('../parsers/attributions'),
 
     // functions
     initializeMongo,
@@ -29,11 +44,7 @@ function buildMetadata(entry) {
     let metadata = _.omit(entry.source.html, ['_id', 'clientTime', 'processed' ]);
     metadata.savingTime = new Date(entry.source.html.savingTime);
     metadata.when = new Date();
-    metadata = _.merge(metadata, _.get(entry, 'findings.event', {}));
-    metadata = _.merge(metadata, _.get(entry, 'findings.preview', {}));
-    if(metadata.eventId)
-        metadata.eventId = _.parseInt(metadata.eventId);
-    return metadata;
+    return _.merge(metadata, _.get(entry, 'findings', {}));
 }
 
 const mongodrivers = {
