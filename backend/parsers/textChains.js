@@ -16,27 +16,25 @@ function textChains(envelop) {
      * when a post report on top why it is display.
      * it is an h5 with quality of "it is before every /ajax/hovercard/" */
 
+    const coacervo = Object({});
     // "Suggested for You"
-    const span = _.compact(_.reduce(envelop.jsdom.querySelectorAll('span'), recursiveTextContent, []));
-    const div = _.compact(_.reduce(envelop.jsdom.querySelectorAll('div'), recursiveTextContent, []));
-    const a = _.compact(_.reduce(envelop.jsdom.querySelectorAll('a'), recursiveTextContent, []));
-    const h2 = _.compact(_.reduce(envelop.jsdom.querySelectorAll('h2'), recursiveTextContent, []));
-    const h3 = _.compact(_.reduce(envelop.jsdom.querySelectorAll('h3'), recursiveTextContent, []));
-    const h4 = _.compact(_.reduce(envelop.jsdom.querySelectorAll('h4'), recursiveTextContent, []));
-    const h5 = _.compact(_.reduce(envelop.jsdom.querySelectorAll('h5'), recursiveTextContent, []));
-    const h6 = _.compact(_.reduce(envelop.jsdom.querySelectorAll('h6'), recursiveTextContent, []));
-    const strong = _.compact(_.reduce(envelop.jsdom.querySelectorAll('strong'), recursiveTextContent, []));
-    const uniques = _.reverse(_.orderBy(_.uniq(div), 'length'));
+    coacervo.span = _.compact(_.reduce(envelop.jsdom.querySelectorAll('span'), recursiveTextContent, []));
+    coacervo.div = _.compact(_.reduce(envelop.jsdom.querySelectorAll('div'), recursiveTextContent, []));
+    coacervo.a = _.compact(_.reduce(envelop.jsdom.querySelectorAll('a'), recursiveTextContent, []));
+    coacervo.h2 = _.compact(_.reduce(envelop.jsdom.querySelectorAll('h2'), recursiveTextContent, []));
+    coacervo.h3 = _.compact(_.reduce(envelop.jsdom.querySelectorAll('h3'), recursiveTextContent, []));
+    coacervo.h4 = _.compact(_.reduce(envelop.jsdom.querySelectorAll('h4'), recursiveTextContent, []));
+    coacervo.h5 = _.compact(_.reduce(envelop.jsdom.querySelectorAll('h5'), recursiveTextContent, []));
+    coacervo.h6 = _.compact(_.reduce(envelop.jsdom.querySelectorAll('h6'), recursiveTextContent, []));
+    coacervo.strong = _.compact(_.reduce(envelop.jsdom.querySelectorAll('strong'), recursiveTextContent, []));
 
-    return {
-        h2, h3, h4, h5, h6,
-        span,
-        strong,
-        div,
-        a,
-        uniques,
-    };
+    const retval = _.reduce(coacervo, function(memo, value, key) {
+        if(value && value.length)
+            _.set(memo, key, value);
+        return memo;
+    }, {});
 
+    return retval;
 };
 
 module.exports = textChains;

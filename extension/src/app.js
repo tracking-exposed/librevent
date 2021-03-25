@@ -240,7 +240,7 @@ function initializeBlinks() {
       // [SEEN_ADV]: {color: '#ffb545'}
     },
     `
-<div>
+<div class="panel">
     <abbr>
       Event Liberator Assistant: currently enabled!
     </abbr>

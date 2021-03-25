@@ -16,9 +16,12 @@ function attributeLinkByPattern(sectionlist, retval) {
         retval.fblinktype = 'stories';
         retval.storyId = second;
         return true;
+    } else if(first == 'events' && second == 'search') {
+        retval.fblinktype = 'event-search';
+        return true;
     } else if(first == 'events') {
-        retval.fblinktype = 'events';
-        retval.pageId = second;
+        retval.fblinktype = 'event';
+        retval.eventId = second;
         return true;
     } else if(first == 'watch') {
         retval.fblinktype = 'watch';
@@ -32,16 +35,10 @@ function attributeLinkByPattern(sectionlist, retval) {
         retval.fblinktype = 'donate';
         retval.pageId = second;
         return true;
-    } else if(first == 'media') {
-        debugger;
-        debug("media: %j", sectionlist)
-        retval.fblinktype = 'media'; /*
-        href: "https://www.facebook.com/media/set/?set=a.2630484733888064&type=3&__xts__%5B0%5D=68.ARDcTIWjOO2JYRuCTLSgIyHB8U55kD5gMlaBJSNYRfMQ4Wx7Bkaf_QOtHYTJQ1Af5E184hfT7uOnLpFFtdBX1rUFOydUQ6DU8MKgv49wWOM_LAnQVdxpw3774yKIOnHqyWjt21hFk0X7vW2g1e_utXqgMCJG1F2p7vqN6hYbt_KVOQXz8GmpSBQIHskmw53L8DuNbCo1D8uKNpZLbZtRiAPOqwzikiqtTxoUGzO_ucamlroB6gA6hyDRg28AWEYTuGHLdzMZeFLcGHzFIGjkRdGpl_cUOF5f8gqdSqFFbHA9rjQNdrAkyLvr3nmqIKK9-FzpsZoXBaV_CUf3bq4SmEi5bVI&__tn__=-UCH-R"
-        parsed:
-        ?set: "a.2630484733888064"
-        type: "3"
-        */
-        return false;
+    } else if(first == 'media' && second == 'set') {
+        // href: "https://www.facebook.com/media/set/?set=a.2630484733888064&type=3&__xts__%5B0%5D=68.ARDcTIWjOO2JYRuCTLSgIyHB8U55kD5gMlaBJSNYRfMQ4Wx7Bkaf_QOtHYTJQ1Af5E184hfT7uOnLpFFtdBX1rUFOydUQ6DU8MKgv49wWOM_LAnQVdxpw3774yKIOnHqyWjt21hFk0X7vW2g1e_utXqgMCJG1F2p7vqN6hYbt_KVOQXz8GmpSBQIHskmw53L8DuNbCo1D8uKNpZLbZtRiAPOqwzikiqtTxoUGzO_ucamlroB6gA6hyDRg28AWEYTuGHLdzMZeFLcGHzFIGjkRdGpl_cUOF5f8gqdSqFFbHA9rjQNdrAkyLvr3nmqIKK9-FzpsZoXBaV_CUf3bq4SmEi5bVI&__tn__=-UCH-R"
+        retval.fblinktype = 'media'; 
+        return true;
     } else if(first == 'hashtag') {
         retval.fblinktype = 'hashtag';
         retval.hashtag = second;
@@ -51,6 +48,10 @@ function attributeLinkByPattern(sectionlist, retval) {
         return true;
     } else if(first == 'images') {
         retval.fblinktype = 'static';
+        return true;
+    } else if(first === 'photo' && _.size(sectionlist) === 1) {
+        // https://www.facebook.com/photo/?fbid=10106438295296426&set=gm.3220462401513683
+        retval.fblinktype = 'photo'; 
         return true;
     } else if(_.size(sectionlist) === 1) {
         retval.fblinktype = 'profile';
@@ -129,34 +130,67 @@ function detailFbImg(urlo) {
     }
 
     const retval = {
-        id: urlo.urlId,
         src: u.hostname + u.pathname + (_.size(u.searchParams.toString()) ? ( '/?' + u.searchParams.toString() ) : ""),
     };
     return retval;
+}
+
+function notRelevantUrl(url) {
+    const listofr = [
+        /.*tracking\.exposed/,
+        /.*localhost:.*/,
+        /.*\.facebook\.com\/$/,
+        /.*\.facebook\.com\/friends\/$/,
+        /.*\.facebook\.com\/watch\/$/,
+        /.*\.facebook\.com\/groups\/$/,
+        /.*\.facebook\.com\/me\/$/,
+        /.*\.facebook\.com\/[bookmarks|business]\/$/,
+        /.*\.facebook\.com\/events\/[calendar|birthday|create]\/.*/,
+        /.*\.facebook\.com\/marketplace\/\?.*/,
+        /.*\.facebook\.com\/privacy\/explanation$/,
+        /.*\.facebook\.com\/help\/568137493302217/,
+        /.*\.facebook\.com\/policies\/cookies/,
+        /.*\.facebook\.com\/policies\?.*/,
+    ];
+    return !! _.compact(_.map(listofr, function(regexptr) {
+        if(url.match(regexptr)) debug("killing %s from %s", url, regexptr);
+        return url.match(regexptr);
+    })).length;
 }
 
 function detailFbLink(urlo) {
     /* this function summarize the 'urlo's and find only meaningful infos */
     if(urlo.linktype !== 'local') throw new Error("misuse");
     const u = urlo.URLo; // comes from helper.updateHrefUnit
+
+    if(notRelevantUrl(u.href))
+        return null;
+
     const retval = {
-        id: urlo.urlId,
         text: urlo.text,
     };
 
     /* only facebook path now are selected */
     const chunks = _.compact(u.pathname.split('/'));
 
+    if(urlo.urlId === "d3b22f1c84a290e8c9fb9286d249bd4c06edc2ec")
+        debugger;
+
     /* at first analyze complex url, with?params */
     const firstTry = attributeLinkByFormat(chunks, retval, urlo.parsed);
-    if(!firstTry)
+    if(!firstTry) {
         /* then look at the substring in position 0, as profile/group/page name .. */
-        attributeLinkByPattern(chunks, retval);
+        let anymeaning = attributeLinkByPattern(chunks, retval);
+        // if has any meaning, then it is worthy to be saved
+        if(!anymeaning)
+            return null;
+    }
 
     if(retval.useless) {
         debug("marked useless removing %j", retval.href);
         return null;
     }
+
     if(!retval.fblinktype) {
         debug("fail w/ %s", urlo.href);
         return null;
@@ -185,27 +219,52 @@ function domainAttribution(urlo) {
 
 function meaningfulId(envelop, previous) {
     /* by looking at facebook links it look for meaningful ID that might be used to link publishers, page, etc .. */
-    const enriched = _.compact(_.flatten(_.map(['hrefChains.hrefs', 'imageChains.images', 'profiles.profiles'], function(objectsPath) {
+    const meaningSources = {
+        'hrefChains.hrefs': 'hrefs',
+        'imageChains.images': 'images',
+        'profiles.profiles': 'profiles'
+    };
+    const enriched = _.reduce(meaningSources, function(memo, destk, objectsPath) {
         const urlcontainer = _.get(previous, objectsPath);
         // debug("From %s found %d useful URLs", objectsPath, _.size(urlunits));
-        return _.map(urlcontainer, function(u) {
+        const olist = _.map(urlcontainer, function(u) {
             try {
-                return domainAttribution(u);
+                u = domainAttribution(u);
+                if(u.linktype === 'local') {
+                    const determination = detailFbLink(u);
+                    // if determination is null we don't care to save this
+                    if(!determination)
+                        return null;
+                    return _.merge(u, determination);
+                }
+                else if(u.linktype === 'cdn')
+                    return _.merge(detailFbImg(u));
+                else if(u.linktype === 'external')
+                    return _.merge(detailFbURL(u));
+                else {
+                    debug("ignored type %s", u.linktype);
+                    return u;
+                }
             } catch(e) {
-                debug("Unexpected failure while looking for %s", u.href);
+                if(u.href.length > 9)
+                    debug("Unexpected failure while looking for %s", u.href);
                 return null;
             }
         });
-    })));
+        const clean = _.uniqBy(_.compact(_.map(olist, function(o) {
+            _.unset(o, 'URLo');
+            return _.reduce(o, function(rebuiltobj, val, key) {
+                if(val)
+                    _.set(rebuiltobj, key, val);
+                return rebuiltobj;
+            }, Object({}));
+        })), 'urlId');
+        memo[destk] = clean;
+        return memo;
+    }, {});
 
-    /* only the internal link might have a meaningful Id */
-    debug(_.countBy(enriched, 'linktype'));
-    const local = _.compact(_.map(_.filter(enriched, { linktype: 'local' }), detailFbLink));
-    const images = _.compact(_.map(_.filter(enriched, { linktype: 'cdn'}), detailFbImg));
-    const links = _.map(_.filter(enriched, { linktype: 'external'}), detailFbURL);
-    const retval = { local, images, links };
-    // TODO uniquify
-    return retval;
+    // debug(_.map(enriched, function(lista, name) { return [ name, _.size(lista)] } ));
+    return enriched;
 }
 
 module.exports = meaningfulId;

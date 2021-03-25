@@ -41,14 +41,15 @@ async function iowrapper(what, req, res) {
         });
 
     if(httpresult.json) {
-        debug("API (%d bytes) success, returning JSON (%d bytes)",
+        debug("API <req %d bytes> success, returning JSON <%d bytes>",
             _.size(JSON.stringify(req.body)), _.size(JSON.stringify(httpresult.json)) );
         res.json(httpresult.json)
     } else if(httpresult.text) {
-        debug("API s success, returning text (size %d)", _.size(httpresult.text));
+        debug("API success, returning text <size %d>", _.size(httpresult.text));
         res.send(httpresult.text)
     } else {
         debug("Undetermined failure in API call, result →  %j", httpresult);
+        res.send(JSON.stringify(httpresult));
     }
 };
 

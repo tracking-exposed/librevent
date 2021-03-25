@@ -93,7 +93,7 @@ export function createPanel (events, helpBody = '') {
     }, container, eventName);
     eventIcon.innerHTML = trexIconSVG(gray);
     eventIcon.addEventListener('click', () => {
-      console.log("aaalllaaa");
+      console.debug("Handle click on TRex Icon SVG");
     });
     return [eventName, eventIcon, val];
   });

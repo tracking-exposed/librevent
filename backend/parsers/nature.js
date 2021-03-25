@@ -125,7 +125,7 @@ function nature(envelop, previous) {
         return null;
     }
 
-    // to check when URL is changed and the app page not yet and newsfeed is collected
+    /*
     const divCheck = envelop.jsdom.querySelectorAll('div').length;
     if(divCheck > 1000) {
         debug("_Div %d too many!!", divCheck);
@@ -139,10 +139,7 @@ function nature(envelop, previous) {
     if(checkTimeline && checkTimeline.length) {
         debug("timeline spot?");
         retval.messages.push("timeline spotted? " + checkTimeline[0].outerHTML.length);
-    }
-    debugger;
-
-    // this is to spot when a post was deleted
+    } */
     const spanCheck = _.compact([...envelop.jsdom.querySelectorAll('span')].map(function(e) {
         return (e.textContent.length > 20) ? e.textContent : null;
     }));
