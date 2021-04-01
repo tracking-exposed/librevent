@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "description": "quickened.interoperability.tracking.exposed → a way to liberate events from facebook and repost them in the fediverse",
   "scripts": {
-    "collector:prod": "NODE_ENV=production DEBUG=fbtrex:*,routes:* node collector.js",
-    "collector:watch": "key=fuffa DEBUG=lib:*,fbtrex:*,routes:*,-lib:mongo:read nodemon collector.js",
+    "collector:prod": "NODE_ENV=production DEBUG=quintrex:*,routes:* node collector.js",
+    "collector:watch": "key=fuffa DEBUG=lib:*,quintrex:*,routes:*,-lib:mongo:read nodemon collector.js",
     "parserv": "DEBUG=*,-lib:aggregated,-lib:parse,-lib:mongo:* node parserv3.js"
   },
   "author": "Claudio Agosti <claudio@tracking.exposed>, https://github.com/tracking-exposed/librevent/graphs/contributors",

@@ -3,7 +3,6 @@ const debug = require('debug')('parsers:components:attribution');
 
 function attributions(envelop, previous) {
 
-    previous.nature.
     const sources = [ 
         previous.textChains.h2,
         previous.textChains.h3,

@@ -8,7 +8,7 @@ const debug = require('debug')('quintrex:collector');
 const nconf = require('nconf');
 const cors = require('cors');
 
-const { processEvents, returnEvent } = require('./lib/api');
+const { processEvents, returnEvent, personalCSVbySubject } = require('./lib/api');
 const mongo3 = require('./lib/mongo3');
 
 const cfgFile = "./settings.json";
@@ -18,21 +18,21 @@ const redOff = "\033[0m";
 nconf.argv().env().file({ file: cfgFile });
 console.log(`${redOn} ઉ nconf loaded, using ${cfgFile} ${redOff} db: ${nconf.get('mongoDb')}`);
 
-if(nconf.get('FBTREX') !== 'production') {
-    debug("Because $FBTREX is not 'production', it is assumed be 'development'");
-    nconf.stores.env.readOnly = false;
-    nconf.set('FBTREX', 'development');
-    nconf.stores.env.readOnly = true;
-} else {
-    debug("Production execution!");
+async function wrapRoutes(what, req, res) {
+    if(what == 'input')
+        return await processEvents(req, res);
+    else if(what == 'output')
+        return await returnEvent(req, res);
+    else if(what == 'personal')
+        return await personalCSVbySubject(req, res);
+    else
+        throw new Error("Developer Error: invalid API call");
 }
 
 async function iowrapper(what, req, res) {
 
     /* there are only two APIs at the moment,  */
-    const httpresult = what == 'input' ? 
-        await processEvents(req, res) :
-        await returnEvent(req, res);
+    const httpresult = await wrapRoutes(what, req, res);
 
     if(_.isObject(httpresult.headers))
         _.each(httpresult.headers, function(value, key) {
@@ -48,7 +48,7 @@ async function iowrapper(what, req, res) {
         debug("API success, returning text <size %d>", _.size(httpresult.text));
         res.send(httpresult.text)
     } else {
-        debug("Undetermined failure in API call, result →  %j", httpresult);
+        debug("Undetermined failure in API call, result → %j", httpresult);
         res.send(JSON.stringify(httpresult));
     }
 };
@@ -68,7 +68,7 @@ app.post('/api/v2/events', cors(), async function(req, res) {
     try {
         await iowrapper('input', req, res);
     } catch(error) {
-        debug("iowrapper Trigger an Exception %s", error);
+        debug("iowrapper Trigger an Exception in 'input' %s", error);
     };
 });
 /* This GET only API, to collect the event HTML */
@@ -76,8 +76,22 @@ app.get('/api/v2/events/:eventId', cors(), async function(req, res) {
     try {
         await iowrapper('output', req, res);
     } catch(error) {
-        debug("iowrapper Trigger an Exception %s", error);
+        debug("iowrapper Trigger an Exception in 'output' %s", error);
     };
+});
+
+app.get('/api/v2/personal/:publicKey/:subject/csv', cors(), async function(req, res) {
+    try {
+        await iowrapper('personal', req, res);
+    } catch(error) {
+        debug("iowrapper Trigger an Exception in 'personal' %s", error);
+    }
+});
+
+/* Capture All 404 errors */
+app.use(async (req, res, next) => {
+    debug("Reached URL %s: not handled!", req.originalUrl);
+        res.status(404).send('Unable to find the requested resource!');
 });
 
 (async function() {

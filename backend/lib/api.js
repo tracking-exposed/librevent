@@ -1,10 +1,11 @@
-var _ = require('lodash');
-var moment = require('moment');
-var debug = require('debug')('api');
-var nconf = require('nconf');
+const _ = require('lodash');
+const moment = require('moment');
+const debug = require('debug')('api');
+const nconf = require('nconf');
 
-var mongo3 = require('./mongo3');
-var utils = require('./utils');
+const mongo3 = require('./mongo3');
+const utils = require('./utils');
+const CSV = require('./CSV');
 
 function processHTMLs(supporter, received) {
 
@@ -122,7 +123,118 @@ async function returnEvent(req) {
     return { json: ready };
 };
 
+async function produceJSON(pk, subject) {
+    const filter = _.extend(supported[subject].filter, { publicKey: pk });
+    debug("produceJSON %s -> filter %j", subject, filter);
+    const MAXSIZE = 2000;
+    const mongoc = await mongo3.clientConnect();
+    const data = await mongo3.readLimit(mongoc, nconf.get('schema').metadata, filter, { savingTime: -1}, MAXSIZE, 0);
+    await mongoc.close();
+
+    if(_.size(data) == MAXSIZE)
+        debug("Fetched MAX %d data, for %s, overflow!", _.size(data), subject);
+    else
+        debug("Fetched %d event(s) for %s", _.size(data), subject);
+
+    /* functions from 'supported' executed here, a pipeline that transform metadata */
+    const pipeline = supported[subject].reduction.split(',');
+    const clean = _.reduce(data, function(memo, entry) {
+        let swapper = entry;
+        _.each(pipeline, function(fname) {
+            swapper = fname(swapper);
+        })
+        memo.push(swapper);
+    }, []);
+
+
+    /* in the case you want to apply a trasformation on the whole dataset, the 'final' function to it */
+    if(supported[supported].final) {
+        const fname = supported[supported].final;
+        const retval = fname(clean);
+        debug("Executed final function, from %d to %d entries", _.size(clean), _.size(final));
+        return retval;
+    }
+
+    /* standard cleaning if NO more specialized reconstruction (the .final above) hasn't happen */
+    const omitFiedls = ['_id', 'when', 'update', 'textChains', 'hrefChains', 'imageChains',
+        'preview', 'post', 'meaningfulId', 'attributions'];
+    return _.map(clean, function(metadata) { return _.omit(metadata, omitFiedls) });
+}
+
+async function produceCSV(pk, subject) {
+
+    const data = await produceJSON(pk, subject);
+    debug("produceJSON: %s")
+    const filename = `${subject}-${_.size(data)}-${moment().format("YYYY-MM-DD")}.csv`;
+    const csv = CSV.produceCSVv1(data);
+    /* this is for collector.js and then for express4 */
+    return {
+        headers: {
+            "Content-Type": "csv/text",
+            "Content-Disposition": "attachment; filename=" + filename
+        },
+        text: csv,
+    };
+}
+
+/* -- THIS IS HOW A RAW METADATA LOOKS LIKE.
+
+_id	id	linktype	href	update	publicKey	savingTime	when	nature	
+textChains	hrefChains	imageChains	preview	post	meaningfulId	attributions 
+
+    -- functions below should also become a library and become a batch script        */
+
+function standard(metadata) {
+    metadata.fblinkype = metadata.nature.fblinkype;
+    return metadata;
+}
+function summaryOnlyCSV(metadata) {
+    return metadata;
+}
+function crono(metadata) {
+    const rebuilt = [];
+    const counters = _.countBy(metadata, 'fblinktype');
+    const counters2 = _.countBy(metadata, 'linktype');
+    debug(counters, counters2);
+    rebuilt[0] = [counters, counters2];
+    return rebuilt;
+}
+
+const supported = {
+    'post': { filter: { 'nature.fblinktype': 'post'},
+        reduction: 'standard'
+    },
+    'profile': { filter: { 'nature.fblinktype': 'profile'},
+        reduction: 'standard'
+    },
+    'crono': { filter: {},
+        reduction: 'standard,summaryOnlyCSV',
+        final: 'crono'
+    },
+    'event': { filter: { 'linktype': 'event'},
+        reduction: 'standard'
+    },
+    'previews': { filter: { 'linktype': 'previews'},
+        reduction: 'standard',
+        final: 'guardoni'
+    }
+};
+
+async function personalCSVbySubject(req) {
+    // personal CSV by :subject
+    debug("Requested personalCSV by Subject %s", req.params.subject);
+    if(req.params.subject == 'post')
+        return await produceCSV(req.params.publicKey, 'post');
+    else if(req.params.subject == 'profile')
+        return await produceCSV(req.params.publicKey, 'profile');
+    else if(req.params.subject == 'crono' || req.params.subject == 'home')
+        return await produceCSV(req.params.publicKey, 'crono');
+    else
+        return { text: `Invalid subject requested, currently supported ${JSON.stringify(_.keys(supported))}`}
+}
+
 module.exports = {
     processEvents,
     returnEvent,
+    personalCSVbySubject,
 };
