@@ -15,8 +15,8 @@ function ListItemLink(props) {
 class InfoBox extends React.Component{
 
     render () {
-        const homecsv = config.API_ROOT + '/personal/' + this.props.publicKey + '/home' + '/csv';
-        const videocsv = config.API_ROOT + '/personal/' + this.props.publicKey + '/video' + '/csv';
+        const eventcsv = config.API_ROOT + '/personal/' + this.props.publicKey + '/events' + '/csv';
+        const previewcsv = config.API_ROOT + '/personal/' + this.props.publicKey + '/previews' + '/csv';
         const personalLink = config.WEB_ROOT + '/personal/#' + this.props.publicKey;
 
         return (
@@ -26,21 +26,21 @@ class InfoBox extends React.Component{
               <ListItemIcon>
                 <AccountBoxIcon />
               </ListItemIcon>
-              <ListItemLink href={personalLink} target="_blank">The events you liberated</ListItemLink>
+              <ListItemLink href={personalLink} target="_blank">More on the events you liberated</ListItemLink>
             </ListItem>
 
             <ListItem button>
               <ListItemIcon>
                 <StayCurrentLandscapeIcon />
               </ListItemIcon>
-              <ListItemLink href={homecsv} target="_blank">Download CSV</ListItemLink>
+              <ListItemLink href={eventcsv} target="_blank">Download CSV</ListItemLink>
             </ListItem>
 
             <ListItem button>
               <ListItemIcon>
                 <OndemandVideoIcon />
               </ListItemIcon>
-              <ListItemLink href={videocsv} target="_blank">Other link?</ListItemLink>
+              <ListItemLink href={previewcsv} target="_blank">Event Previews CSV</ListItemLink>
             </ListItem>
 
           </List>

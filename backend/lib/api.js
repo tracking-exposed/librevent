@@ -1,6 +1,6 @@
 const _ = require('lodash');
 const moment = require('moment');
-const debug = require('debug')('api');
+const debug = require('debug')('lib:api');
 const nconf = require('nconf');
 
 const mongo3 = require('./mongo3');
@@ -141,23 +141,24 @@ async function produceJSON(pk, subject) {
     const clean = _.reduce(data, function(memo, entry) {
         let swapper = entry;
         _.each(pipeline, function(fname) {
-            swapper = fname(swapper);
+            swapper = eval(fname)(swapper);
         })
         memo.push(swapper);
+        return memo;
     }, []);
 
 
     /* in the case you want to apply a trasformation on the whole dataset, the 'final' function to it */
-    if(supported[supported].final) {
+    if(supported[subject].final) {
         const fname = supported[supported].final;
-        const retval = fname(clean);
+        const retval = eval(fname)(clean);
         debug("Executed final function, from %d to %d entries", _.size(clean), _.size(final));
         return retval;
     }
 
     /* standard cleaning if NO more specialized reconstruction (the .final above) hasn't happen */
-    const omitFiedls = ['_id', 'when', 'update', 'textChains', 'hrefChains', 'imageChains',
-        'preview', 'post', 'meaningfulId', 'attributions'];
+    const omitFiedls = _.concat(['_id', 'when', 'update', 'textChains', 'hrefChains', 'imageChains',
+        'preview', 'post', 'meaningfulId', 'attributions', 'nature'], ['urlo', 'parsed', 'messages']);
     return _.map(clean, function(metadata) { return _.omit(metadata, omitFiedls) });
 }
 
@@ -185,10 +186,24 @@ textChains	hrefChains	imageChains	preview	post	meaningfulId	attributions
     -- functions below should also become a library and become a batch script        */
 
 function standard(metadata) {
-    metadata.fblinkype = metadata.nature.fblinkype;
-    return metadata;
+    return _.merge(metadata, metadata.nature);
 }
 function summaryOnlyCSV(metadata) {
+    return metadata;
+}
+function eventInfo(metadata) {
+    try {
+        const images = _.filter(metadata.imageChains.images, function(entry) {
+            return entry.src.match(/.*(\d+)_(\d+)_(\d+)_n\.jpg\?.*/);
+        });
+        metadata.images = _.map(images, 'src');
+        debug("Found %d meaningful images %j", _.size(images), metadata.images);
+        metadata.title = metadata.textChains.h2[2];
+        metadata.eventDateString = metadata.textChains.h2[1];
+        metadata.description = metadata.textChains.longer;
+    } catch(error) {
+        debug("Error in eventInfo pipeline function: %s", error.message);
+    }
     return metadata;
 }
 function crono(metadata) {
@@ -211,8 +226,8 @@ const supported = {
         reduction: 'standard,summaryOnlyCSV',
         final: 'crono'
     },
-    'event': { filter: { 'linktype': 'event'},
-        reduction: 'standard'
+    'events': { filter: { 'linktype': 'event'},   // uniform linktype and nature.fblinktype?
+        reduction: 'standard,eventInfo'
     },
     'previews': { filter: { 'linktype': 'previews'},
         reduction: 'standard',
@@ -223,14 +238,13 @@ const supported = {
 async function personalCSVbySubject(req) {
     // personal CSV by :subject
     debug("Requested personalCSV by Subject %s", req.params.subject);
-    if(req.params.subject == 'post')
-        return await produceCSV(req.params.publicKey, 'post');
-    else if(req.params.subject == 'profile')
-        return await produceCSV(req.params.publicKey, 'profile');
-    else if(req.params.subject == 'crono' || req.params.subject == 'home')
+    if(req.params.subject == 'crono' || req.params.subject == 'home')
         return await produceCSV(req.params.publicKey, 'crono');
-    else
+
+    if(_.keys(supported).indexOf(req.params.subject) == -1)
         return { text: `Invalid subject requested, currently supported ${JSON.stringify(_.keys(supported))}`}
+
+    return await produceCSV(req.params.publicKey, req.params.subject);
 }
 
 module.exports = {
