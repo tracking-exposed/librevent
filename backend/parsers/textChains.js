@@ -28,10 +28,8 @@ function textChains(envelop) {
     coacervo.h6 = _.compact(_.reduce(envelop.jsdom.querySelectorAll('h6'), recursiveTextContent, []));
     coacervo.strong = _.compact(_.reduce(envelop.jsdom.querySelectorAll('strong'), recursiveTextContent, []));
 
-    const topdiv = _.reverse(_.orderBy(_.uniq(coacervo.div), _.size))[0];
-    const topspan = _.reverse(_.orderBy(_.uniq(coacervo.span), _.size))[0];
-    if(topdiv == topspan)
-        coacervo.longer = topdiv;
+    coacervo.topdiv = _.slice(_.reverse(_.orderBy(_.uniq(coacervo.div), _.size)), 0, 10);
+    coacervo.topspan = _.slice(_.reverse(_.orderBy(_.uniq(coacervo.span), _.size)), 0, 10);
 
     const retval = _.reduce(coacervo, function(memo, value, key) {
         if(value && value.length)

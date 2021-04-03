@@ -153,7 +153,7 @@ function notRelevantUrl(url) {
         /.*\.facebook\.com\/policies\?.*/,
     ];
     return !! _.compact(_.map(listofr, function(regexptr) {
-        if(url.match(regexptr)) debug("killing %s from %s", url, regexptr);
+        // if(url.match(regexptr)) debug("killing %s from %s", url, regexptr);
         return url.match(regexptr);
     })).length;
 }

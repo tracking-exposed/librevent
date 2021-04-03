@@ -124,7 +124,9 @@ async function returnEvent(req) {
 };
 
 async function produceJSON(pk, subject) {
-    const filter = _.extend(supported[subject].filter, { publicKey: pk });
+    // this function might have publicKey (when invoked by personal API) or
+    // might ask for every data (if queried by public API)
+    const filter = pk ? _.extend(supported[subject].filter, { publicKey: pk }) : supported[subject].filter;
     debug("produceJSON %s -> filter %j", subject, filter);
     const MAXSIZE = 2000;
     const mongoc = await mongo3.clientConnect();
@@ -150,16 +152,17 @@ async function produceJSON(pk, subject) {
 
     /* in the case you want to apply a trasformation on the whole dataset, the 'final' function to it */
     if(supported[subject].final) {
-        const fname = supported[supported].final;
+        const fname = supported[subject].final;
         const retval = eval(fname)(clean);
-        debug("Executed final function, from %d to %d entries", _.size(clean), _.size(final));
+        debug("Executed final function, from %d to %d entries", _.size(clean), _.size(retval));
         return retval;
     }
 
     /* standard cleaning if NO more specialized reconstruction (the .final above) hasn't happen */
-    const omitFiedls = _.concat(['_id', 'when', 'update', 'textChains', 'hrefChains', 'imageChains',
+    const omitFields = _.concat(['_id', 'when', 'update', 'textChains', 'hrefChains', 'imageChains',
         'preview', 'post', 'meaningfulId', 'attributions', 'nature'], ['urlo', 'parsed', 'messages']);
-    return _.map(clean, function(metadata) { return _.omit(metadata, omitFiedls) });
+    /* the second chunks (urlo, parsed..) comes from 'nature' object */
+    return _.map(clean, function(metadata) { return _.omit(metadata, omitFields) });
 }
 
 async function produceCSV(pk, subject) {
@@ -185,11 +188,31 @@ textChains	hrefChains	imageChains	preview	post	meaningfulId	attributions
 
     -- functions below should also become a library and become a batch script        */
 
+// REDUCION transformations they works on an individual data unit
 function standard(metadata) {
     return _.merge(metadata, metadata.nature);
 }
 function summaryOnlyCSV(metadata) {
     return metadata;
+}
+function mineEventsFromPreview(metadata) {
+
+    const valuables = _.compact(_.map(metadata.meaningfulId.hrefs, function(eventobj) {
+        const isanEvent = eventobj.fblinktype ==='event' &&
+            eventobj.eventId &&
+            eventobj.eventId.match(/(\d+)/);
+        if(!isanEvent)
+            return false;
+
+        eventobj.href = `https://www.facebook.com/events/${eventobj.eventId}`;
+        eventobj.title = eventobj.text;
+        eventobj.savingTime = new Date(metadata.savingTime);
+        return eventobj;
+    }));
+
+    return _.map(valuables, function(entry) {
+        return _.pick(entry, ['title', 'urlId', 'savingTime', 'href']);
+    });
 }
 function eventInfo(metadata) {
     try {
@@ -197,22 +220,26 @@ function eventInfo(metadata) {
             return entry.src.match(/.*(\d+)_(\d+)_(\d+)_n\.jpg\?.*/);
         });
         metadata.images = _.map(images, 'src');
-        debug("Found %d meaningful images %j", _.size(images), metadata.images);
+        // debug("Found %d meaningful images %j", _.size(images), metadata.images);
         metadata.title = metadata.textChains.h2[2];
         metadata.eventDateString = metadata.textChains.h2[1];
-        metadata.description = metadata.textChains.longer;
+        metadata.description = metadata.textChains.topdiv.join(' ');
     } catch(error) {
         debug("Error in eventInfo pipeline function: %s", error.message);
     }
     return metadata;
 }
-function crono(metadata) {
+// FINAL transformation (they works on the entire dataset)
+function crono(metadatas) { 
     const rebuilt = [];
-    const counters = _.countBy(metadata, 'fblinktype');
-    const counters2 = _.countBy(metadata, 'linktype');
+    const counters = _.countBy(metadatas, 'fblinktype');
+    const counters2 = _.countBy(metadatas, 'linktype');
     debug(counters, counters2);
     rebuilt[0] = [counters, counters2];
     return rebuilt;
+}
+function guardoni(metadatas) {
+    return _.flatten(metadatas);
 }
 
 const supported = {
@@ -230,7 +257,7 @@ const supported = {
         reduction: 'standard,eventInfo'
     },
     'previews': { filter: { 'linktype': 'previews'},
-        reduction: 'standard',
+        reduction: 'mineEventsFromPreview',
         final: 'guardoni'
     }
 };
@@ -247,8 +274,22 @@ async function personalCSVbySubject(req) {
     return await produceCSV(req.params.publicKey, req.params.subject);
 }
 
+async function commonalDataViaSubject(req) {
+    // this function is like personal but do not add publicKey filter and it is mean for 
+    // public diffusione of data: personal identified MUST be redacted/pseudonymized
+    debug("Requested commonal data (subject %s, format %s", req.params.subject, req.params.format);
+    if(req.params.subject == 'previews') {
+        // the 'previews' already destroy personal data as it use 'guardoni' as final TRANSFORMATION
+        content = await produceJSON(null, req.params.subject);
+        return { json: content };
+    }
+
+    return { text: 'Only supported variables: /api/v2/common/previews/guardoni'};
+}
+
 module.exports = {
     processEvents,
     returnEvent,
     personalCSVbySubject,
+    commonalDataViaSubject,
 };

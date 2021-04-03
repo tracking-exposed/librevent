@@ -8,7 +8,7 @@ const debug = require('debug')('quintrex:collector');
 const nconf = require('nconf');
 const cors = require('cors');
 
-const { processEvents, returnEvent, personalCSVbySubject } = require('./lib/api');
+const api = require('./lib/api');
 const mongo3 = require('./lib/mongo3');
 
 const cfgFile = "./settings.json";
@@ -20,11 +20,13 @@ console.log(`${redOn} ઉ nconf loaded, using ${cfgFile} ${redOff} db: ${nconf.g
 
 async function wrapRoutes(what, req, res) {
     if(what == 'input')
-        return await processEvents(req, res);
+        return await api.processEvents(req, res);
     else if(what == 'output')
-        return await returnEvent(req, res);
+        return await api.returnEvent(req, res);
     else if(what == 'personal')
-        return await personalCSVbySubject(req, res);
+        return await api.personalCSVbySubject(req, res);
+    else if(what == 'common')
+        return await api.commonalDataViaSubject(req, res);
     else
         throw new Error("Developer Error: invalid API call");
 }
@@ -88,10 +90,20 @@ app.get('/api/v2/personal/:publicKey/:subject/csv', cors(), async function(req, 
     }
 });
 
+app.get('/api/v2/common/:subject/:format', cors(), async function(req, res) {
+    try {
+        await iowrapper('common', req, res);
+    } catch(error) {
+        debug("iowrapper Trigger an Exception in 'common': %s", error);
+    }
+});
+
 /* Capture All 404 errors */
 app.use(async (req, res, next) => {
     debug("Reached URL %s: not handled!", req.originalUrl);
-        res.status(404).send('Unable to find the requested resource!');
+    res
+        .status(404)
+        .send('Unable to find the requested resource!');
 });
 
 (async function() {
