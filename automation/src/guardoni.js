@@ -68,32 +68,20 @@ async function localbrowser() {
 
 async function main() {
 
-  const homeOnly = !!nconf.get('home') || false;
   const sourceUrl = nconf.get('source');
   let directives = null;
-  if(homeOnly) {
-    console.log("Loading a single directive to PH homepage");
-    directives = [ 'https://www.pornhub.com' ]
-  } else {
-    if(!sourceUrl) {
-      console.log("The directive should be a JSON file passed with --source option, for example:");
-      console.log("--source https://pornhub.tracking.exposed/json/twenty-homepages.json");
-      process.exit(1);
-    }
+  if(!sourceUrl) {
+    console.log("The directive should be a JSON file passed with --source option, for example:");
+    console.log("--source https://quickened.interoperability.tracking.exposed/api/v2/common/previews/guardoni");
+    process.exit(1);
   }
 
   try {
-    if(!directives) {
-      const response = await fetch(sourceUrl);
-      directives = await response.json();
-      if(!directives.length) {
-        console.log("The directive downloaded looks like an empty list");
-        process.exit(1);
-      }
-      if(!_.startsWith(directives[0], 'http')) {
-        console.log("The directive downloaded do not contain a list with an URL.");
-        process.exit(1);
-      }
+    const response = await fetch(sourceUrl);
+    directives = await response.json();
+    if(!directives.length) {
+      console.log("The directive downloaded looks like an empty list");
+      process.exit(1);
     }
   } catch (error) {
     debug("Error: %s", error.message);
@@ -112,14 +100,14 @@ async function main() {
 
   if(!fs.existsSync(dist)) {
     console.log('Directory '+ dist +' not found, please download:');
-    console.log('https://github.com/tracking-exposed/quickened.interoperability/releases/download/0.1.2/extension-librevents.zip');
+    console.log('https://github.com/tracking-exposed/quickened.interoperability/releases/download/0.1.3/extension.zip');
     console.log("and be sure manifest.json is in" + dist);
     process.exit(1)
   }
 
   const profile = nconf.get('profile');
   if(!profile) {
-    console.log("--profile it is necessary and must be an absolute path, you con configure it with:")
+    console.log("--profile it is necessary and might also be an empty directory (chrome would fill it up, don't delete it");
     process.exit(1)
   }
   const udd = path.resolve(profile);
