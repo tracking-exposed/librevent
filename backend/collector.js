@@ -82,7 +82,8 @@ app.get('/api/v2/events/:eventId', cors(), async function(req, res) {
     };
 });
 
-app.get('/api/v2/personal/:publicKey/:subject/csv', cors(), async function(req, res) {
+app.options('/api/v2/personal/:publiKey/:subject/:format', cors());
+app.get('/api/v2/personal/:publicKey/:subject/:format', cors(), async function(req, res) {
     try {
         await iowrapper('personal', req, res);
     } catch(error) {
@@ -90,6 +91,7 @@ app.get('/api/v2/personal/:publicKey/:subject/csv', cors(), async function(req, 
     }
 });
 
+app.options('/api/v2/common/:subject/:format', cors());
 app.get('/api/v2/common/:subject/:format', cors(), async function(req, res) {
     try {
         await iowrapper('common', req, res);

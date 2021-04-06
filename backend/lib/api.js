@@ -7,6 +7,8 @@ const mongo3 = require('./mongo3');
 const utils = require('./utils');
 const CSV = require('./CSV');
 
+const GUARDONI_MAX_URLS = 20;
+
 function processHTMLs(supporter, received) {
 
     const id = utils.hash({href: received.href,
@@ -207,11 +209,12 @@ function mineEventsFromPreview(metadata) {
         eventobj.href = `https://www.facebook.com/events/${eventobj.eventId}`;
         eventobj.title = eventobj.text;
         eventobj.savingTime = new Date(metadata.savingTime);
+        eventobj.timeago = moment.duration(moment() - moment(metadata.savingTime)).humanize();
         return eventobj;
     }));
 
     return _.map(valuables, function(entry) {
-        return _.pick(entry, ['title', 'urlId', 'savingTime', 'href']);
+        return _.pick(entry, ['title', 'urlId', 'savingTime', 'href', 'timeago']);
     });
 }
 function eventInfo(metadata) {
@@ -239,7 +242,11 @@ function crono(metadatas) {
     return rebuilt;
 }
 function guardoni(metadatas) {
-    return _.flatten(metadatas);
+    // from a nested list of lists, flatten, keep only the most recent 20 unique URL to feed automatation
+    // in the future this should keep in account to return only events that are not yet scraped.
+    const maxlist = _.flatten(metadatas);
+    const uniquified = _.uniqBy(maxlist, 'urlId');
+    return _.slice(_.reverse(_.sortBy(uniquified, 'savingTime')), 0, GUARDONI_MAX_URLS);
 }
 
 const supported = {
@@ -271,7 +278,11 @@ async function personalCSVbySubject(req) {
     if(_.keys(supported).indexOf(req.params.subject) == -1)
         return { text: `Invalid subject requested, currently supported ${JSON.stringify(_.keys(supported))}`}
 
-    return await produceCSV(req.params.publicKey, req.params.subject);
+    // check if the requested format it is effectively CSV
+    if(req.params.format === 'csv')
+        return await produceCSV(req.params.publicKey, req.params.subject);
+    else
+        return await produceJSON(req.params.publicKey, req.params.subject);
 }
 
 async function commonalDataViaSubject(req) {

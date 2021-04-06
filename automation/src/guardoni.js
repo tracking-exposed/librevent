@@ -1,5 +1,5 @@
 const _ = require('lodash');
-const debug = require('debug')('automated-tool');
+const debug = require('debug')('guardoni-3');
 const bcons = require('debug')('browser:console');
 const puppeteer = require("puppeteer-extra")
 const { TimeoutError } = require("puppeteer/lib/api");
@@ -9,6 +9,7 @@ const fetch = require('node-fetch');
 const path = require('path');
 const util = require('util');
 const fs = require('fs');
+const { dir } = require('console');
 
 nconf.argv().env();
 const DELAY = nconf.get('delay') || 10000;
@@ -90,14 +91,10 @@ async function main() {
         console.log("The directive downloaded looks like an empty list");
         process.exit(1);
       }
-      if(!_.startsWith(directives[0], 'http')) {
-        console.log("The directive downloaded do not contain a list with an URL.");
-        process.exit(1);
-      }
+      debug("%s", JSON.stringify(directives, undefined, 2));
     }
   } catch (error) {
     debug("Error: %s", error.message);
-    console.log(error.response.body);
     process.exit(1);
   }
 
@@ -179,17 +176,18 @@ async function operateBrowser(browser, directives, sourceUrl) {
   let counter = 0;
   await setPageEvent(page);
   for (const directive of directives) {
+    debug("%s", JSON.stringify(directive, undefined, 2));
     counter++;
     if(!(skip >= counter)) {
       try {
-        console.log("Loading directive", counter, "url:", directive, "from", sourceUrl);
-        await page.goto(directive, { 
+        console.log(`Loading ${directive.title} at ${counter} at ${directive.href}`);
+        await page.goto(directive.href, { 
           waitUntil: "networkidle0",
         });
         debug("Loaded page! waiting", DELAY);
         await page.waitFor(DELAY);
       } catch(error) {
-        console.log("[!!!] Error in loading:", directive, "number", counter, "error", error.message, "details:\n", error.stack);
+        console.log(`[!!!] Error in loading: ${directive.href} ${counter} error ${error.message}, details:\n${error.stack}`);
         // if it is fatal, it is because an explicit option say so
         if(fatal)
           process.exit(1);

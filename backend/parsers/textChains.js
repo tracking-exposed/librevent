@@ -31,13 +31,12 @@ function textChains(envelop) {
     coacervo.topdiv = _.slice(_.reverse(_.orderBy(_.uniq(coacervo.div), _.size)), 0, 10);
     coacervo.topspan = _.slice(_.reverse(_.orderBy(_.uniq(coacervo.span), _.size)), 0, 10);
 
-    const retval = _.reduce(coacervo, function(memo, value, key) {
+    /* keep only fields with actually something */
+    return _.reduce(coacervo, function(memo, value, key) {
         if(value && value.length)
             _.set(memo, key, value);
         return memo;
     }, {});
-
-    return retval;
 };
 
 module.exports = textChains;
