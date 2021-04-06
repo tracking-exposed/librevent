@@ -199,6 +199,7 @@ function summaryOnlyCSV(metadata) {
 }
 function mineEventsFromPreview(metadata) {
 
+    if(!metadata.meaningfulId) return [];
     const valuables = _.compact(_.map(metadata.meaningfulId.hrefs, function(eventobj) {
         const isanEvent = eventobj.fblinktype ==='event' &&
             eventobj.eventId &&
