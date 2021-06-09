@@ -1,6 +1,6 @@
 # Librevent 
 
-This project mandate is to **quickened interoperability**, browser extension reviewer can jump at [build the extension](#build the extension).
+This project is build as part of [quickened interoperability](https://quickened.interoperability.tracking.exposed), which is a complex plan that include this software, in conjunction with [mobilizon](https://joinmobilizon.org). 
 
 ### What's interoperability ? 
 
@@ -14,4 +14,5 @@ Critical mass is the reason why Facebook remain dominan despite none of their re
 
 ## By liberating events from Facebook to Fediverse we might help migration on federated platform.
 
+And that's all we're testing here! If you want to get more grasp of the actual impact (May 2021) please check out [mobilize.berlin](https://mobilize.berlin).
 
