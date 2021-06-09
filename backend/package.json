@@ -11,6 +11,7 @@
   "license": "AGPL-3.0",
   "dependencies": {
     "@postlight/mercury-parser": "^2.2.0",
+    "axios": "^0.21.1",
     "bluebird": "^3.7.2",
     "body-parser": "^1.18.3",
     "bootstrap": "^4.6.0",

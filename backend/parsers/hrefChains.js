@@ -2,7 +2,7 @@ const _ = require('lodash');
 const debug = require('debug')('parsers:hrefChains');
 const helper = require('./helper');
 
-function hrefChains(envelop) {
+async function hrefChains(envelop) {
     const hrefs = _.map(envelop.jsdom.querySelectorAll('a'), function(anode) {
         let retval = {
             href: anode.getAttribute('href')

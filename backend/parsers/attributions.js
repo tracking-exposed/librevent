@@ -1,7 +1,7 @@
 const _ = require('lodash');
 const debug = require('debug')('parsers:components:attribution');
 
-function attributions(envelop, previous) {
+async function attributions(envelop, previous) {
 
     const sources = [ 
         previous.textChains.h2,

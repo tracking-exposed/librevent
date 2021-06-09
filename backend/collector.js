@@ -16,7 +16,7 @@ const redOn = "\033[31m";
 const redOff = "\033[0m";
 
 nconf.argv().env().file({ file: cfgFile });
-console.log(`${redOn} ઉ nconf loaded, using ${cfgFile} ${redOff} db: ${nconf.get('mongoDb')}`);
+console.log(`${redOn} ઉ nconf loaded, using ${cfgFile} ${redOff} — mongoDb: ${nconf.get('mongoDb')}`);
 
 async function wrapRoutes(what, req, res) {
     if(what == 'input')

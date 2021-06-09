@@ -29,8 +29,9 @@ function attributeLinkByPattern(sectionlist, retval) {
         retval.detailId = _.nth(sectionlist, 2);
         return true;
     } else if(first == 'notes') {
+        console.log("Unexpected notes?");
         retval.fblinktype = 'notes';
-        debugger;
+        return true;
     } else if(first == 'donate') {
         retval.fblinktype = 'donate';
         retval.pageId = second;
@@ -173,9 +174,6 @@ function detailFbLink(urlo) {
     /* only facebook path now are selected */
     const chunks = _.compact(u.pathname.split('/'));
 
-    if(urlo.urlId === "d3b22f1c84a290e8c9fb9286d249bd4c06edc2ec")
-        debugger;
-
     /* at first analyze complex url, with?params */
     const firstTry = attributeLinkByFormat(chunks, retval, urlo.parsed);
     if(!firstTry) {
@@ -217,7 +215,7 @@ function domainAttribution(urlo) {
     return urlo;
 }
 
-function meaningfulId(envelop, previous) {
+async function meaningfulId(envelop, previous) {
     /* by looking at facebook links it look for meaningful ID that might be used to link publishers, page, etc .. */
     const meaningSources = {
         'hrefChains.hrefs': 'hrefs',
