@@ -12,7 +12,6 @@ const pchain = require('./lib/parserchain');
 
 nconf.argv().env().file({ file: './settings.json' });
 
-
 async function sleep(ms) {
     return new Promise(resolve => {
         setTimeout(resolve, ms)
@@ -100,9 +99,12 @@ async function executeParsingChain(htmlFilter) {
 
     stats.current = moment();
     stats.currentamount = _.size(envelops.sources);
-    const logof = [];
 
-    const results = _.map(envelops.sources, pipeline);
+    const results = [];
+    for(entry of envelops.sources) {
+        const r = await pipeline(entry);
+        results.push(r);
+    }
     /* results is a list of objects: [ {
         source: { timeline, impression, dom, html },
         findings: { $dissector1, $dissector2 },
@@ -110,9 +112,15 @@ async function executeParsingChain(htmlFilter) {
 
     console.table(_.map(results, function(e) {
         _.set(e.log, 'id', e.source.html.id);
-        _.set(e.log, 'from', _.get(e, 'findings.attributions.publisherName'));
+        _.set(e.log, 'from', 
+            e.findings.nature.fblinktype == 'event-search' ?
+            'EVENT SEARCH ['+ e.findings.nature.query + ']' :
+            _.get(e, 'findings.attributions.publisherName')
+        );
         return e.log;
     }));
+
+    const logof = [];
     for (const entry of results) {
         try {
             const metaentry = pchain.buildMetadata(entry);

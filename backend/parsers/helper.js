@@ -17,6 +17,7 @@ function updateHrefUnit(unit, sourceKey) {
     // this transform all the possible URLs with an url object to 
     // help future parsing
     let thref = _.get(unit, sourceKey);
+    if(!thref) return null;
     if(_.startsWith(thref, '/'))
         _.set(unit, sourceKey, 'https://www.facebook.com' + thref );
     const bang = _.startsWith(thref, '#');

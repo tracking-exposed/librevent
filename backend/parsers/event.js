@@ -1,12 +1,13 @@
 const _ = require('lodash');
 const debug = require('debug')('parser:event');
 
-function event(envelope, previous) {
+async function event(envelope, previous) {
 
-    if(previous.nature.fblinktype !== 'event')
+    if(previous.nature.fblinktype !== 'event' ||
+       previous.nature.fblinktype !== 'event-search')
         return false;
 
-	debug("this is an event");
+    // debug("this is an event");
     const h2 = envelope.jsdom.querySelectorAll('h2');
     const eventTime = h2[0].textContent;
     const eventTitle = h2[1].textContent;

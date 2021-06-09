@@ -2,7 +2,7 @@ const _ = require('lodash');
 const debug = require('debug')('parser:post');
 const helper = require('./helper');
 
-function post(envelope, previous) {
+async function post(envelope, previous) {
 
     if(previous.nature.fblinktype !== 'post')
         return false;

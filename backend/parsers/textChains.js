@@ -11,7 +11,7 @@ function recursiveTextContent(memo, node) {
     }
 };
 
-function textChains(envelop) {
+async function textChains(envelop) {
     /* a reason is like 54c7c8f6c5440407cb7ee764620424ecdd6fea3f
      * when a post report on top why it is display.
      * it is an h5 with quality of "it is before every /ajax/hovercard/" */

@@ -1,7 +1,7 @@
 const _ = require('lodash');
 const debug = require('debug')('parser:preview');
 
-function mine(envelope, previous) {
+async function preview(envelope, previous) {
 
     if(envelope.html.linktype !== 'preview')
         return false;
@@ -15,4 +15,4 @@ function mine(envelope, previous) {
     };
 }
 
-module.exports = mine;
+module.exports = preview;

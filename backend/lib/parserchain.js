@@ -3,7 +3,6 @@ const debug = require('debug')('lib:parserchain');
 const nconf = require('nconf'); 
 const JSDOM = require('jsdom').JSDOM;
 
-const utils = require('./utils');
 const mongo3 = require('./mongo3');
 
 module.exports = {
@@ -16,6 +15,7 @@ module.exports = {
         'imageChains',
         'preview',
         'post',
+        'event',
         'meaningfulId',
         'attributions',
     ],
@@ -23,7 +23,6 @@ module.exports = {
     event: require('../parsers/event'),
     preview: require('../parsers/preview'),
     meaningfulId: require('../parsers/meaningfulId'),
-    event: require('../parsers/event'),
     post: require('../parsers/post'),
     nature: require('../parsers/nature'),
     textChains: require('../parsers/textChains'),
@@ -93,12 +92,14 @@ async function getLastHTMLs(filter, amount) {
     }
 }
 
-function wrapDissector(dissectorF, dissectorName, source, envelope) {
+async function wrapDissector(dissectorF, dissectorName, source, envelope) {
     try {
         // this function pointer point to all the functions in parsers/*
         // as argument they take function(source ({.jsdom, .html}, previous {...}))
-        let retval = dissectorF(source, envelope.findings);
+        let retval = await dissectorF(source, envelope.findings);
         let resultIndicator = JSON.stringify(retval).length;
+        if(typeof retval === 'boolean')
+            resultIndicator = retval;
         _.set(envelope.log, dissectorName, resultIndicator);
         return retval;
     } catch(error) {
