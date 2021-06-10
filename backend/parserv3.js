@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-const { parse } = require('cookie');
 const _ = require('lodash');
 const moment = require('moment');
 const debug = require('debug')('quintrex:parserv');
@@ -36,27 +35,28 @@ let lastExecution = moment().subtract(backInTime, 'minutes').toISOString();
 let computedFrequency = 10;
 const stats = { currentamount: 0, current: null };
 
-function pipeline(e) {
+async function pipeline(e) {
     try {
         processedCounter++;
-        const rv = _.reduce(pchain.dissectorList, function(memo, extractorName) {
-            try {
-                let mined = pchain.wrapDissector(pchain[extractorName], extractorName, e, memo);
-                _.set(memo.findings, extractorName, mined);
-            } catch(error) {
-                _.set(memo.failures, extractorName, error.message);
-            }
-            return memo;
-        }, {
+        const structure = {
             failures: {},
             source: e,
             log: {},
             findings: {}
-        });
-        debug("#%d\t(%d mins) http://localhost:1313/debug/html/#%s %s",
+        };
+        for (extractorName of pchain.dissectorList ) {
+            try {
+                let mined = await pchain.wrapDissector(pchain[extractorName], extractorName, e, structure);
+                _.set(structure.findings, extractorName, mined);
+            } catch(error) {
+                _.set(structure.failures, extractorName, error.message);
+            }
+        }
+        debug("#%d\t(%d mins) http://localhost:1313/debug/html/#%s",
             processedCounter, _.round(moment.duration( moment() - moment(e.html.savingTime)).asMinutes(), 0), e.html.id
         );
-        return rv;
+
+        return structure;
     } catch(error) {
         debuge("#%d\t pipeline general failure error: %s", processedCounter, error.message);
         return null;
@@ -113,9 +113,9 @@ async function executeParsingChain(htmlFilter) {
     console.table(_.map(results, function(e) {
         _.set(e.log, 'id', e.source.html.id);
         _.set(e.log, 'from', 
-            e.findings.nature.fblinktype == 'event-search' ?
-            'EVENT SEARCH ['+ e.findings.nature.query + ']' :
-            _.get(e, 'findings.attributions.publisherName')
+            e.findings.nature.fblinktype !== 'events' ?
+            _.toUpper(e.findings.nature.fblinktype) :
+            _.get(e, 'findings.event.eventTitle')
         );
         return e.log;
     }));

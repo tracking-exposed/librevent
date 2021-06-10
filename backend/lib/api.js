@@ -90,8 +90,8 @@ async function processEvents(req) {
         supporter = await createSupporter(mongoc, headers.publickey);
     }
 
-    debug(" * Supporter %s [%s] last activity %s (%s ago)",
-        supporter.pseudo, supporter.marker ? supporter.marker : "(NOMARKER)",
+    debug(" * Supporter %s [active on %s] last activity %s (%s ago)",
+        supporter.pseudo, moment().format("HH:mm"),
         moment(supporter.lastActivity).format("HH:mm DD/MM"),
         moment.duration(moment.utc()-moment(supporter.lastActivity)).humanize() );
 
@@ -128,7 +128,7 @@ async function returnEvent(req) {
 async function produceJSON(pk, subject) {
     // this function might have publicKey (when invoked by personal API) or
     // might ask for every data (if queried by public API)
-    const filter = pk ? _.extend(supported[subject].filter, { publicKey: pk }) : supported[subject].filter;
+    const filter = pk ? _.extend(supportedTransformations[subject].filter, { publicKey: pk }) : supportedTransformations[subject].filter;
     debug("produceJSON %s -> filter %j", subject, filter);
     const MAXSIZE = 2000;
     const mongoc = await mongo3.clientConnect();
@@ -141,7 +141,7 @@ async function produceJSON(pk, subject) {
         debug("Fetched %d event(s) for %s", _.size(data), subject);
 
     /* functions from 'supported' executed here, a pipeline that transform metadata */
-    const pipeline = supported[subject].reduction.split(',');
+    const pipeline = supportedTransformations[subject].reduction.split(',');
     const clean = _.reduce(data, function(memo, entry) {
         let swapper = entry;
         _.each(pipeline, function(fname) {
@@ -153,8 +153,8 @@ async function produceJSON(pk, subject) {
 
 
     /* in the case you want to apply a trasformation on the whole dataset, the 'final' function to it */
-    if(supported[subject].final) {
-        const fname = supported[subject].final;
+    if(supportedTransformations[subject].final) {
+        const fname = supportedTransformations[subject].final;
         const retval = eval(fname)(clean);
         debug("Executed final function, from %d to %d entries", _.size(clean), _.size(retval));
         return retval;
@@ -250,7 +250,7 @@ function guardoni(metadatas) {
     return _.slice(_.reverse(_.sortBy(uniquified, 'savingTime')), 0, GUARDONI_MAX_URLS);
 }
 
-const supported = {
+const supportedTransformations = {
     'post': { filter: { 'nature.fblinktype': 'post'},
         reduction: 'standard'
     },
@@ -276,8 +276,8 @@ async function personalCSVbySubject(req) {
     if(req.params.subject == 'crono' || req.params.subject == 'home')
         return await produceCSV(req.params.publicKey, 'crono');
 
-    if(_.keys(supported).indexOf(req.params.subject) == -1)
-        return { text: `Invalid subject requested, currently supported ${JSON.stringify(_.keys(supported))}`}
+    if(_.keys(supportedTransformations).indexOf(req.params.subject) == -1)
+        return { text: `Invalid subject requested, currently supported ${JSON.stringify(_.keys(supportedTransformations))}`}
 
     // check if the requested format it is effectively CSV
     if(req.params.format === 'csv')

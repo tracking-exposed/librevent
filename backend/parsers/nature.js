@@ -28,6 +28,9 @@ async function nature(envelop, previous) {
         retval.unintended = true;
         retval.messages.push("not found nature?");
     }
+
+    _.unset(retval, 'urlo');
+    _.unset(retval, 'parsed');
     return retval;
 }
 

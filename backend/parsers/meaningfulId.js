@@ -225,7 +225,7 @@ async function meaningfulId(envelop, previous) {
     const enriched = _.reduce(meaningSources, function(memo, destk, objectsPath) {
         const urlcontainer = _.get(previous, objectsPath);
         // debug("From %s found %d useful URLs", objectsPath, _.size(urlunits));
-        const olist = _.map(urlcontainer, function(u) {
+        const olist = _.compact(_.map(urlcontainer, function(u) {
             try {
                 u = domainAttribution(u);
                 if(u.linktype === 'local') {
@@ -244,11 +244,11 @@ async function meaningfulId(envelop, previous) {
                     return u;
                 }
             } catch(e) {
-                if(u.href.length > 9)
+                if(u && u.href.length > 9)
                     debug("Unexpected failure while looking for %s", u.href);
                 return null;
             }
-        });
+        }));
         const clean = _.uniqBy(_.compact(_.map(olist, function(o) {
             _.unset(o, 'URLo');
             return _.reduce(o, function(rebuiltobj, val, key) {

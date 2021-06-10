@@ -10,25 +10,13 @@ module.exports = {
      * after the newline there are modules that levegared on previously mined metadata */
     dissectorList: [
         'nature',
-        'textChains',
-        'hrefChains',
         'imageChains',
-        'preview',
-        'post',
         'event',
-        'meaningfulId',
-        'attributions',
     ],
 
     event: require('../parsers/event'),
-    preview: require('../parsers/preview'),
-    meaningfulId: require('../parsers/meaningfulId'),
-    post: require('../parsers/post'),
     nature: require('../parsers/nature'),
-    textChains: require('../parsers/textChains'),
-    hrefChains: require('../parsers/hrefChains'),
     imageChains: require('../parsers/imageChains'),
-    attributions: require('../parsers/attributions'),
 
     // functions
     initializeMongo,
@@ -103,6 +91,8 @@ async function wrapDissector(dissectorF, dissectorName, source, envelope) {
         _.set(envelope.log, dissectorName, resultIndicator);
         return retval;
     } catch(error) {
+        debug("Error in %s: %s", dissectorName, error.message)
+        debug("%s", error.stack);
         _.set(envelope.log, dissectorName, "!E");
         throw error;
     }

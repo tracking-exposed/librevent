@@ -19,12 +19,18 @@ function attributeLinkByPattern(sectionlist, retval) {
         retval.storyId = second;
         return true;
     } else if(first == 'events' && second == 'search') {
-        retval.fblinktype = 'event-search';
+        retval.fblinktype = 'events-search';
         retval.query = retval.parsed['?q'];
+        retval.quintrex = true;
+        return true;
+    } else if(first == 'events' && _.isUndefined(second)) { 
+        retval.fblinktype = 'events-list';
+        retval.quintrex = true;
         return true;
     } else if(first == 'events') {
         retval.fblinktype = 'events';
-        retval.pageId = second;
+        retval.eventId = second;
+        retval.quintrex = true;
         return true;
     } else if(first == 'watch') {
         retval.fblinktype = 'watch';
