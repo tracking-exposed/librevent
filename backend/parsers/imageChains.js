@@ -25,15 +25,27 @@ function mineImg(anode) {
     if(retval.height && retval.width)
         retval.dimension = [ _.parseInt(retval.width), _.parseInt(retval.height) ];
 
+    /* image meaning evaluation */
+    retval.urlo = new URL(retval.src);
+    retval.origname = path.basename(retval.urlo.pathname);
+    const urlchunks = retval.urlo.pathname.split('/');
+    const definition = _.reduce(urlchunks, function(memo, chunk) {
+        if(chunk.match(/s(\d+)x(\d+)/))
+            memo = chunk;
+        return memo;
+    }, null);
+
+    if(definition)
+        retval.definition = definition;
+
+    retval.valuable = !!retval.urlo.pathname.match(/(\d+)_(\d+)_(\d+)/);
+    /* the .definition and .valuable help to select what we need later */
     retval = helper.updateHrefUnit(retval, 'src');
     return retval;
 }
 
-async function fetchImages(imgo, metadataId) {
-    const urlo = new URL(imgo.src);
-    const origname = path.basename(urlo.pathname);
-    const today = moment().format("YYYY-MM-DD");
-    let destfname = path.join('images', metadataId, origname);
+async function fetchImages(imgo, origHREF, metadataId) {
+    let destfname = path.join('images', metadataId, imgo.origname);
     let fetchUrl = imgo.src;
 
     try {
@@ -44,7 +56,7 @@ async function fetchImages(imgo, metadataId) {
         return null;
     }
 
-    if(origname === 'safe_image.php') {
+    if(imgo.origname === 'safe_image.php') {
         debug("Unexpected presence of safe_image in events!");
         return null;
     }
@@ -55,10 +67,12 @@ async function fetchImages(imgo, metadataId) {
         return imgo;
     }
 
+    debug("Fetching image from %s", fetchUrl);
     try {
         await axios({
             method: "get",
             url: fetchUrl,
+            headers: {'referer': origHREF },
             responseType: "stream"
         }).then(function (response) {
             response.data.pipe(fs.createWriteStream(destfname));
@@ -78,16 +92,26 @@ function stripUseless(imagelist) {
     });
 }
 
+function keepTheBiggest(imagel) {
+    /* this sorting only matters for images with more than one equale pathname */
+    return _.reject(imagel, { definition: 's320x320'});
+}
+
 async function imageChains(envelop, previous) {
     /* alt, the altenative text used in pictures, might contain the individual name of an user
      * from their picture profile. This selector might take that too. That is not an information
      * we should collect */
-    const images = _.compact(_.map(envelop.jsdom.querySelectorAll('img'), mineImg));
+    let images = _.compact(_.map(envelop.jsdom.querySelectorAll('img'), mineImg));
+    /* in 'events' there are the 320x320 pictures and other bigger pictures, we need the biggest */
+    if(previous.nature.fblinktype === 'events')
+        images = keepTheBiggest(images);
+
     if(FETCH_IMAGES) {
         const r = [];
         // debug("After filtering the picture to download are %d", _.size(images));
         for (imginfo of images) {
             const extendedInfo = await fetchImages(imginfo,
+                envelop.html.href,
                 previous.nature.fblinktype + " " + envelop.html.id);
             if(extendedInfo)
                 r.push(extendedInfo);
