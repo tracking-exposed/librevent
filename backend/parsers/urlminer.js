@@ -1,6 +1,6 @@
 const _ = require('lodash');
 const moment = require('moment');
-const debug = require('debug')('parsers:meaningfulId');
+const debug = require('debug')('parsers:urlminer');
 
 /* remind self: this code is an improvement of librevent which is an improvement of fbtrex,
  * please align */
@@ -30,6 +30,11 @@ function attributeLinkByPattern(sectionlist, retval) {
     } else if(first == 'events') {
         retval.fblinktype = 'events';
         retval.eventId = second;
+        retval.quintrex = true;
+        return true;
+    } else if(second == 'events') {
+        retval.fblinktype = 'events-page';
+        retval.pageId = first;
         retval.quintrex = true;
         return true;
     } else if(first == 'watch') {
@@ -75,6 +80,8 @@ function attributeLinkByPattern(sectionlist, retval) {
         retval.detailId = _.nth(sectionlist, 2);
         return true;
     }
+
+    debug("Failing in finding %s %s")
     return false;
 }
 
