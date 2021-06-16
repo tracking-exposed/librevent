@@ -1,26 +1,34 @@
 #!/usr/bin/env node
 const _ = require('lodash');
-const debug = require('debug')('fbwatcher');
+
 const puppeteer = require("puppeteer-extra")
 const pluginStealth = require("puppeteer-extra-plugin-stealth");
 const fs = require('fs');
 const path = require('path');
 const nconf = require('nconf');
-const execSync = require('child_process').execSync;
 const querystring = require('querystring');
+
+const debug = require('debug')('fbwatcher');
+const bcons = require('debug')('browser:console');
 
 const urlminer = require('../../backend/parsers/urlminer');
 
 nconf.argv().env();
 
-defaultAfter = async function(page, directive) {
-  debug("afterWait function is not implemented");
+async function beforeDirectives(page, directives) {
+    // debug("Watching and duplicating browser console...");
+    // page.on('console', function(message) { bcons("%s", message.text())});
+    page.on('pageerror', function(message) { bcons(`Error: ${message}`)});
 }
-defaultBefore = async function(page, directive) {
-  debug("beforeWait function is not implemented");
-}
-defaultInit = async function(page, directive) {
-  debug("beforeDirective function is not implemented");
+
+async function afterWait(page, directive) {
+    // const innerWidth = await page.evaluate(_ => { return window.innerWidth });
+    // const innerHeight = await page.evaluate(_ => { return window.innerHeight });
+    const linestr = directive.line;
+    const fname = _.concat([ linestr], _.values(_.omit(directive, ['url', 'loadFor']))).join('+')
+    const scrout = path.join("screencapts", `${fname}.png`);
+    await page.screenshot({ path: scrout, type: 'png' });
+    debug("screenshot saved as %s", scrout);
 }
 
 async function keypress() {
@@ -54,7 +62,7 @@ async function main() {
   try {
     retval = {
       line: 1,
-      loadFor: 12000,
+      loadFor: nconf.get('delay') ? _.parseInt(nconf.get('delay')) * 1000 :  12000,
       url: nconf.get('url'),
     };
     retval.urlo = new URL( retval.url );
@@ -104,6 +112,7 @@ async function main() {
     browser = await puppeteer.launch({
         headless: false,
         userDataDir: udd,
+        // executablePath:  "C:\\program\ files\ \(x86\)\\Google\\Chrome\\Application\\chrome.exe",
         args: ["--no-sandbox",
           "--disabled-setuid-sandbox",
           "--load-extension=" + dist,
@@ -114,24 +123,12 @@ async function main() {
     if(setupDelay)
       await allowResearcherSomeTimeToSetupTheBrowser();
 
-    const DS = './domainSpecific';
-    let domainSpecific = null;
-    try {
-      domainSpecific = require(DS);
-    } catch(error) {
-      console.log("Not found domainSpecific!?", DS, error);
-      domainSpecific = {
-        beforeWait: defaultBefore,
-        afterWait: defaultAfter,
-        beforeDirectives: defaultInit,
-      };
-    }
     const page = (await browser.pages())[0];
     _.tail(await browser.pages()).forEach(async function(opage) {
       debug("Closing a tab that shouldn't be there!");
       await opage.close();
     })
-    await domainSpecific.beforeDirectives(page, profile, directives);
+    await beforeDirectives(page, profile, directives);
     // the BS above should close existing open tabs except 1st
     await operateBroweser(page, directives, domainSpecific);
     await browser.close();
@@ -149,17 +146,11 @@ async function operateTab(page, directive, domainSpecific, timeout) {
   await page.goto(directive.url, { 
     waitUntil: "networkidle0",
   });
-  debug("— Loading URL %d", directive.line);
-  try {
-    await domainSpecific.beforeWait(page, directive);
-  } catch(error) {
-    console.log("error in beforeWait", error.message, error.stack);
-  }
   debug("Directive to URL %s, Loading delay %d", directive.url, directive.loadFor);
   await page.waitFor(directive.loadFor);
   console.log("Done loading wait. Calling domainSpecific");
   try {
-    await domainSpecific.afterWait(page, directive);
+    await afterWait(page, directive);
   } catch(error) {
     console.log("Error in afterWait", error.message, error.stack);
   }
