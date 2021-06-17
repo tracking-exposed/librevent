@@ -8,10 +8,11 @@ const querystring = require('querystring');
 const puppeteer = require('puppeteer-extra');
 const pluginStealth = require('puppeteer-extra-plugin-stealth');
 
-const debug = require('debug')('fbwatcher');
+const debug = require('debug')('guardoni:fb');
 const bcons = require('debug')('browser:console');
 
 const urlminer = require('../../backend/parsers/urlminer');
+const imagefetch = require('../../backend/parsers/imagefetch');
 
 nconf.argv().env();
 
@@ -21,19 +22,13 @@ async function beforeDirectives(page) {
   page.on('pageerror', function(message) { bcons(`Error: ${message}`)});
 }
 
-async function unknowf(page, name, node) {
-  debug("unknow how to manage content from %s", name);
-}
-
-async function recurringEventsF(page, name, node) {
+async function getEvent(page, directive) {
+  // this function is invoked when an event is rendered 
+  console.log(directive)
   debugger;
 }
 
-async function pastEventsF(page, name, node) {
-  debugger;
-}
-
-async function afterWait(page, directive) {
+async function localParseEventPage(page, directive) {
  
   const selemap = {
     upcoming: '#upcoming_events_card',
@@ -87,7 +82,8 @@ async function afterWait(page, directive) {
     const pout = path.join("pointers", `${fname}.json`);
     valuables.screenshot = scrout;
     fs.writeFileSync(pout, JSON.stringify(valuables, undefined, 2), 'utf-8');
-    console.log("Saved valuable results in", pout);
+    console.log("Saved pointers!");
+    console.log("Now you can use --pointer ", pout);
   } else {
     console.log("Nothing saved as nothing worthy have been found!");
   }
@@ -106,41 +102,47 @@ async function allowResearcherSomeTimeToSetupTheBrowser() {
   await keypress();
 }
 
+function buildPageDirective(url) {
+  retval = {
+    loadFor: nconf.get('delay') ? _.parseInt(nconf.get('delay')) * 1000 : 12000,
+    url: nconf.get('url'),
+  };
+  retval.urlo = new URL( retval.url );
+  retval.parsed = querystring.parse(retval.urlo.search);
+  const chunks = _.compact(retval.urlo.pathname.split('/'));
+  if(!urlminer.attributeLinkByPattern(chunks, retval))
+    throw new Error("Unable to parse link by pattern");
+  directives = [ _.omit(retval, ['urlo', 'parsed']) ];
+}
+
+function buildEventsDirectives(pointerfile) {
+
+}
+
 async function main() {
 
-  /*
-  const sourceUrl = nconf.get('source');
-  if(!sourceUrl) {
-    console.log("Mandatory option --list is missing and should be a .json file");
-    process.exit(1);
-  } */
-
-  if(!nconf.get('url')) {
-    console.log("--url required");
+  if(!nconf.get('page') || !nconf.get('pointer')) {
+    console.log("--page or --pointer is required as option");
+    console.log("check documentation in https://quickened.interoperability.tracking.exposed/guardoni");
     process.exit(1);
   }
 
   let directives;
+
   try {
-    retval = {
-      loadFor: nconf.get('delay') ? _.parseInt(nconf.get('delay')) * 1000 : 12000,
-      url: nconf.get('url'),
-    };
-    retval.urlo = new URL( retval.url );
-    retval.parsed = querystring.parse(retval.urlo.search);
-    const chunks = _.compact(retval.urlo.pathname.split('/'));
-    if(!urlminer.attributeLinkByPattern(chunks, retval))
-      throw new Error("Unable to parse link by pattern");
-    directives = [ _.omit(retval, ['urlo', 'parsed']) ];
-    debug("Directive %s", JSON.stringify(directives, undefined, 2));
+
+    if(nconf.get('page'))
+      directives = buildPageDirective(nconf.get('page'));
+    else
+      directives = buildEventsDirectives(nconf.get('pointer'));
+
+    debug("Directive built: %s", JSON.stringify(directives, undefined, 2));
   } catch (error) {
-    console.log("Error in retriving directive URL: " + error.message);
+    console.log("Error in building directive: " + error.message);
     console.log(error.stack);
-    // console.log(error.response.body);
     process.exit(1);
   }
 
-  debug("Opening %d URLs/directives", directives.length);
 
   const cwd = process.cwd();
   const dist = path.resolve(path.join(cwd, '..', 'extension', 'dist'));
@@ -213,7 +215,11 @@ async function operateTab(page, directive) {
   await page.waitFor(directive.loadFor);
   console.log("Done loading wait. Calling domainSpecific");
   try {
-    await afterWait(page, directive);
+    if(directive.fblinktype == "events-page") {
+      await localParseEventPage(page, directive);
+    } else if (directive.fblinktype == "events") {
+      await getEvent(page, directive);
+    }
   } catch(error) {
     console.log("Error in afterWait", error.message, error.stack);
   }
