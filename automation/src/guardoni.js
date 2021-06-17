@@ -38,14 +38,6 @@ async function localParseEventPage(page, directive) {
     recurring: "#recurring_events_card",
     past: "#past_events_card",
   };
-  const fumap = {
-    upcoming: unknowf,
-    cohost: unknowf,
-    imported: unknowf,
-    tours: unknowf,
-    recurring: recurringEventsF,
-    past: pastEventsF,
-  }
 
   const valuables = [];
   for (label of _.keys(selemap)) {
@@ -105,14 +97,14 @@ async function allowResearcherSomeTimeToSetupTheBrowser() {
 function buildPageDirective(url) {
   retval = {
     loadFor: nconf.get('delay') ? _.parseInt(nconf.get('delay')) * 1000 : 12000,
-    url: nconf.get('url'),
+    url
   };
   retval.urlo = new URL( retval.url );
   retval.parsed = querystring.parse(retval.urlo.search);
   const chunks = _.compact(retval.urlo.pathname.split('/'));
   if(!urlminer.attributeLinkByPattern(chunks, retval))
     throw new Error("Unable to parse link by pattern");
-  directives = [ _.omit(retval, ['urlo', 'parsed']) ];
+  return [ _.omit(retval, ['urlo', 'parsed']) ];
 }
 
 function buildEventsDirectives(pointerfile) {
@@ -121,7 +113,7 @@ function buildEventsDirectives(pointerfile) {
 
 async function main() {
 
-  if(!nconf.get('page') || !nconf.get('pointer')) {
+  if(!nconf.get('page') && !nconf.get('pointer')) {
     console.log("--page or --pointer is required as option");
     console.log("check documentation in https://quickened.interoperability.tracking.exposed/guardoni");
     process.exit(1);
@@ -211,9 +203,10 @@ async function operateTab(page, directive) {
   await page.goto(directive.url, { 
     waitUntil: "networkidle0",
   });
+
   debug("Directive to URL %s, Loading delay %d", directive.url, directive.loadFor);
   await page.waitFor(directive.loadFor);
-  console.log("Done loading wait. Calling domainSpecific");
+
   try {
     if(directive.fblinktype == "events-page") {
       await localParseEventPage(page, directive);
@@ -221,8 +214,9 @@ async function operateTab(page, directive) {
       await getEvent(page, directive);
     }
   } catch(error) {
-    console.log("Error in afterWait", error.message, error.stack);
+    console.log("Error in page operations", error.message, error.stack);
   }
+
   debug("— Completed operation");
 }
 
