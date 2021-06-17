@@ -47,7 +47,7 @@ const DEFINITIONS = {
         VERSION: JSON.stringify(packageJSON.version + (DEVELOPMENT ? '-dev' : '')),
         BUILD: JSON.stringify(`On the ${moment().format("DD of MMMM at HH:mm")}.`),
         BUILDISODATE: JSON.stringify(BUILDISODATE),
-        FLUSH_INTERVAL: JSON.stringify(DEVELOPMENT ? 10000 : 20000)
+        FLUSH_INTERVAL: JSON.stringify(5000)
     }
 };
 

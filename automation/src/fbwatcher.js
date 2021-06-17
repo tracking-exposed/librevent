@@ -1,12 +1,12 @@
 #!/usr/bin/env node
-const _ = require('lodash');
-
-const puppeteer = require("puppeteer-extra")
-const pluginStealth = require("puppeteer-extra-plugin-stealth");
 const fs = require('fs');
+const _ = require('lodash');
 const path = require('path');
 const nconf = require('nconf');
+const moment = require('moment');
 const querystring = require('querystring');
+const puppeteer = require('puppeteer-extra');
+const pluginStealth = require('puppeteer-extra-plugin-stealth');
 
 const debug = require('debug')('fbwatcher');
 const bcons = require('debug')('browser:console');
@@ -15,20 +15,82 @@ const urlminer = require('../../backend/parsers/urlminer');
 
 nconf.argv().env();
 
-async function beforeDirectives(page, directives) {
-    // debug("Watching and duplicating browser console...");
-    // page.on('console', function(message) { bcons("%s", message.text())});
-    page.on('pageerror', function(message) { bcons(`Error: ${message}`)});
+async function beforeDirectives(page) {
+  // debug("Watching and duplicating browser console...");
+  // page.on('console', function(message) { bcons("%s", message.text())});
+  page.on('pageerror', function(message) { bcons(`Error: ${message}`)});
+}
+
+async function unknowf(page, name, node) {
+  debug("unknow how to manage content from %s", name);
+}
+
+async function recurringEventsF(page, name, node) {
+  debugger;
+}
+
+async function pastEventsF(page, name, node) {
+  debugger;
 }
 
 async function afterWait(page, directive) {
-    // const innerWidth = await page.evaluate(_ => { return window.innerWidth });
-    // const innerHeight = await page.evaluate(_ => { return window.innerHeight });
-    const linestr = directive.line;
-    const fname = _.concat([ linestr], _.values(_.omit(directive, ['url', 'loadFor']))).join('+')
+ 
+  const selemap = {
+    upcoming: '#upcoming_events_card',
+    cohost: "#cohost_requests_card",
+    imported: "#imported_events_card",
+    tours: "#tours_card",
+    recurring: "#recurring_events_card",
+    past: "#past_events_card",
+  };
+  const fumap = {
+    upcoming: unknowf,
+    cohost: unknowf,
+    imported: unknowf,
+    tours: unknowf,
+    recurring: recurringEventsF,
+    past: pastEventsF,
+  }
+
+  const valuables = [];
+  for (label of _.keys(selemap)) {
+    const selector = _.get(selemap, label);
+    const data = await page.evaluate((selector) => {
+      // debugging / inspecting inside of here is complex?
+      const node = document.querySelector(selector);
+      const ahrefs = node.querySelectorAll('a[href^="/events/"]');
+      const result = [];
+      for (let i = 0; i < ahrefs.length; i++) {
+        result.push(ahrefs[i].getAttribute('href'));
+      }
+      return JSON.stringify(result);
+    }, selector);
+    // fucking god!
+    // https://stackoverflow.com/questions/52045947/nodejs-puppeteer-how-to-use-page-evaluate
+    if(data && data.length > 2) {
+      const cleanHrefs = _.uniq(_.map(JSON.parse(data), function(href) {
+        return href.replace(/\?.*/, '');
+      }));
+      valuables.push({
+        name: label,
+        eventHrefs: cleanHrefs,
+      });
+    }
+  }
+
+  if(valuables.length) {
+    const fname = _.concat([ moment().format("YYYY-MM-DD+HH-mm")], _.values(_.omit(directive, [ 'quintrex', 'url', 'loadFor']))).join('+')
     const scrout = path.join("screencapts", `${fname}.png`);
     await page.screenshot({ path: scrout, type: 'png' });
-    debug("screenshot saved as %s", scrout);
+    debug("Screenshot saved as %s", scrout);
+
+    const pout = path.join("pointers", `${fname}.json`);
+    valuables.screenshot = scrout;
+    fs.writeFileSync(pout, JSON.stringify(valuables, undefined, 2), 'utf-8');
+    console.log("Saved valuable results in", pout);
+  } else {
+    console.log("Nothing saved as nothing worthy have been found!");
+  }
 }
 
 async function keypress() {
@@ -61,8 +123,7 @@ async function main() {
   let directives;
   try {
     retval = {
-      line: 1,
-      loadFor: nconf.get('delay') ? _.parseInt(nconf.get('delay')) * 1000 :  12000,
+      loadFor: nconf.get('delay') ? _.parseInt(nconf.get('delay')) * 1000 : 12000,
       url: nconf.get('url'),
     };
     retval.urlo = new URL( retval.url );
@@ -109,14 +170,15 @@ async function main() {
   let browser = null;
   try {
     puppeteer.use(pluginStealth());
-    browser = await puppeteer.launch({
+    const browser = await puppeteer.launch({
         headless: false,
         userDataDir: udd,
         // executablePath:  "C:\\program\ files\ \(x86\)\\Google\\Chrome\\Application\\chrome.exe",
         args: ["--no-sandbox",
           "--disabled-setuid-sandbox",
           "--load-extension=" + dist,
-          "--disable-extensions-except=" + dist
+          "--disable-extensions-except=" + dist,
+          "--lang=en_IE"
         ],
     });
   
@@ -127,10 +189,11 @@ async function main() {
     _.tail(await browser.pages()).forEach(async function(opage) {
       debug("Closing a tab that shouldn't be there!");
       await opage.close();
-    })
+    });
+
     await beforeDirectives(page, profile, directives);
     // the BS above should close existing open tabs except 1st
-    await operateBroweser(page, directives, domainSpecific);
+    await operateBroweser(page, directives);
     await browser.close();
   } catch(error) {
     console.log("Error in operateBrowser (collection fail):", error);
@@ -140,7 +203,7 @@ async function main() {
   process.exit(0);
 }
 
-async function operateTab(page, directive, domainSpecific, timeout) {
+async function operateTab(page, directive) {
   // TODO the 'timeout' would allow to repeat this operation with
   // different parameters. https://stackoverflow.com/questions/60051954/puppeteer-timeouterror-navigation-timeout-of-30000-ms-exceeded
   await page.goto(directive.url, { 
@@ -154,14 +217,14 @@ async function operateTab(page, directive, domainSpecific, timeout) {
   } catch(error) {
     console.log("Error in afterWait", error.message, error.stack);
   }
-  debug("— Completed operation %d", directive.line);
+  debug("— Completed operation");
 }
 
-async function operateBroweser(page, directives, domainSpecific) {
+async function operateBroweser(page, directives) {
   // await page.setViewport({width: 1024, height: 768});
   for (directive of directives) {
     try {
-      await operateTab(page, directive, domainSpecific);
+      await operateTab(page, directive);
     } catch(error) {
       debug("operateTab in %s — error: %s", directive.url, error.message);
     }
