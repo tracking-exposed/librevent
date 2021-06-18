@@ -8,7 +8,7 @@ const querystring = require('querystring');
 const puppeteer = require('puppeteer-extra');
 const pluginStealth = require('puppeteer-extra-plugin-stealth');
 
-const debug = require('debug')('guardoni:fb');
+const debug = require('debug')('guardoni:events');
 const bcons = require('debug')('browser:console');
 
 const urlminer = require('../../backend/parsers/urlminer');
@@ -16,7 +16,7 @@ const imagefetch = require('../../backend/parsers/imagefetch');
 
 nconf.argv().env();
 
-async function beforeDirectives(page) {
+async function beforeDirectives(page, profile, directives) {
   // debug("Watching and duplicating browser console...");
   // page.on('console', function(message) { bcons("%s", message.text())});
   page.on('pageerror', function(message) { bcons(`Error: ${message}`)});
@@ -24,48 +24,36 @@ async function beforeDirectives(page) {
 
 async function getEvent(page, directive) {
   // this function is invoked when an event is rendered 
-  console.log(directive)
   debugger;
+  const where = await page.evaluate(() => {
+    const foca = document.querySelectorAll('section');
+    
+    return JSON.stringify(result);
+  });
 }
 
 async function localParseEventPage(page, directive) {
  
-  const selemap = {
-    upcoming: '#upcoming_events_card',
-    cohost: "#cohost_requests_card",
-    imported: "#imported_events_card",
-    tours: "#tours_card",
-    recurring: "#recurring_events_card",
-    past: "#past_events_card",
-  };
-
-  const valuables = [];
-  for (label of _.keys(selemap)) {
-    const selector = _.get(selemap, label);
-    const data = await page.evaluate((selector) => {
-      // debugging / inspecting inside of here is complex?
-      const node = document.querySelector(selector);
-      const ahrefs = node.querySelectorAll('a[href^="/events/"]');
-      const result = [];
-      for (let i = 0; i < ahrefs.length; i++) {
-        result.push(ahrefs[i].getAttribute('href'));
-      }
-      return JSON.stringify(result);
-    }, selector);
-    // fucking god!
-    // https://stackoverflow.com/questions/52045947/nodejs-puppeteer-how-to-use-page-evaluate
-    if(data && data.length > 2) {
-      const cleanHrefs = _.uniq(_.map(JSON.parse(data), function(href) {
-        return href.replace(/\?.*/, '');
-      }));
-      valuables.push({
-        name: label,
-        eventHrefs: cleanHrefs,
-      });
+  const valuables = {};
+  const data = await page.evaluate(() => {
+    // debugging / inspecting inside of here is complex?
+    const ahrefs = document.querySelectorAll('a[href^="/events/"]');
+    const result = [];
+    for (let i = 0; i < ahrefs.length; i++) {
+      result.push(ahrefs[i].getAttribute('href'));
     }
+    return JSON.stringify(result);
+  });
+  // fucking god!
+  // https://stackoverflow.com/questions/52045947/nodejs-puppeteer-how-to-use-page-evaluate
+  if(data && data.length > 2) {
+    const cleanHrefs = _.uniq(_.map(JSON.parse(data), function(href) {
+      return href.replace(/\?.*/, '');
+    }));
+    valuables.eventHrefs = cleanHrefs;
   }
 
-  if(valuables.length) {
+  if(valuables.eventHrefs) {
     const fname = _.concat([ moment().format("YYYY-MM-DD+HH-mm")], _.values(_.omit(directive, [ 'quintrex', 'url', 'loadFor']))).join('+')
     const scrout = path.join("screencapts", `${fname}.png`);
     await page.screenshot({ path: scrout, type: 'png' });
@@ -95,9 +83,11 @@ async function allowResearcherSomeTimeToSetupTheBrowser() {
 }
 
 function buildPageDirective(url) {
-  retval = {
+  const rightUrl = url.match(/www\./) ?
+    url.replace(/www\./, 'mbasic.') : url;
+  const retval = {
     loadFor: nconf.get('delay') ? _.parseInt(nconf.get('delay')) * 1000 : 12000,
-    url
+    url: rightUrl,
   };
   retval.urlo = new URL( retval.url );
   retval.parsed = querystring.parse(retval.urlo.search);
@@ -108,7 +98,20 @@ function buildPageDirective(url) {
 }
 
 function buildEventsDirectives(pointerfile) {
-
+  debug("Loading content and parsing JSON from %s", pointerfile);
+  const content = JSON.parse(fs.readFileSync(pointerfile, 'utf-8'));
+  return _.map(content.eventHrefs, function(eurl) {
+    const retval = {
+      url: 'https://mbasic.facebook.com' + eurl,
+      loadFor: nconf.get('delay') ? _.parseInt(nconf.get('delay')) * 1000 : 12000,
+    }
+    retval.urlo = new URL( retval.url );
+    retval.parsed = querystring.parse(retval.urlo.search);
+    const chunks = _.compact(retval.urlo.pathname.split('/'));
+    if(!urlminer.attributeLinkByPattern(chunks, retval))
+      throw new Error("Unable to parse link by pattern");
+    return _.omit(retval, ['urlo', 'parsed']);
+  });
 }
 
 async function main() {
@@ -120,9 +123,7 @@ async function main() {
   }
 
   let directives;
-
   try {
-
     if(nconf.get('page'))
       directives = buildPageDirective(nconf.get('page'));
     else
@@ -171,8 +172,7 @@ async function main() {
         args: ["--no-sandbox",
           "--disabled-setuid-sandbox",
           "--load-extension=" + dist,
-          "--disable-extensions-except=" + dist,
-          "--lang=en_IE"
+          "--disable-extensions-except=" + dist
         ],
     });
   
@@ -184,10 +184,12 @@ async function main() {
       debug("Closing a tab that shouldn't be there!");
       await opage.close();
     });
+    // the BS above should close existing open tabs except 1st
 
     await beforeDirectives(page, profile, directives);
-    // the BS above should close existing open tabs except 1st
+    // ^^^ this execute settings that should always be active
     await operateBroweser(page, directives);
+    // this loop over all the directives
     await browser.close();
   } catch(error) {
     console.log("Error in operateBrowser (collection fail):", error);
@@ -195,6 +197,17 @@ async function main() {
     process.exit(1);
   }
   process.exit(0);
+}
+
+async function operateBroweser(page, directives) {
+  // await page.setViewport({width: 1024, height: 768});
+  for (directive of directives) {
+    try {
+      await operateTab(page, directive);
+    } catch(error) {
+      debug("operateTab in %s — error: %s", directive.url, error.message);
+    }
+  }
 }
 
 async function operateTab(page, directive) {
@@ -218,17 +231,6 @@ async function operateTab(page, directive) {
   }
 
   debug("— Completed operation");
-}
-
-async function operateBroweser(page, directives) {
-  // await page.setViewport({width: 1024, height: 768});
-  for (directive of directives) {
-    try {
-      await operateTab(page, directive);
-    } catch(error) {
-      debug("operateTab in %s — error: %s", directive.url, error.message);
-    }
-  }
 }
 
 main ();

@@ -22,6 +22,7 @@
   "permissions": [
     "storage",
     "https://*.facebook.com/",
+    "http://localhost:13000/",
     "https://*.tracking.exposed/"
   ],
 
