@@ -24,12 +24,43 @@ async function beforeDirectives(page, profile, directives) {
 
 async function getEvent(page, directive) {
   // this function is invoked when an event is rendered 
-  debugger;
-  const where = await page.evaluate(() => {
-    const foca = document.querySelectorAll('section');
-    
-    return JSON.stringify(result);
+  const eventDetails = await page.evaluate(() => {
+    const sctns = document.querySelectorAll('section');
+    const desrows = sctns[0].querySelectorAll('tr');
+    const img = document.querySelector('img[role="img"]');
+
+    return JSON.stringify({
+      rowcount: desrows.length,
+      sectioncount: sctns.length,
+      dates: desrows[0].innerText,
+      when: desrows[0].querySelector('div').innerText,
+      description: sctns[1].innerText,
+      src: img.getAttribute('src'),
+    })
   });
+
+  const evfname = directive.eventId + '_' + moment().format("YYYY-MM-DD-HH-mm");
+  const evscrout = path.join("screencapts", `${evfname}.png`);
+  const evjsondetf = path.join("evdetails", `${evfname}.json`);
+
+  const eventnfo = JSON.parse(eventDetails);
+  /* pieces of code from imagefetch.mineImg */
+  eventnfo.urlo = new URL(eventnfo.src);
+  eventnfo.origname = path.basename(eventnfo.urlo.pathname);
+
+  await imagefetch.fetchImages(eventnfo, eventnfo.src, directive.eventId)
+  debug("Downloaded picture in %s", eventnfo.saved);
+
+  await page.screenshot({ path: evscrout, type: 'png' });
+  debug("Screenshot saved as %s", evscrout);
+
+  eventnfo.screenshot = evscrout;
+  _.unset(eventnfo, 'urlo');
+  _.unset(eventnfo, 'src');
+  _.unset(eventnfo, 'origname');
+  console.log("Saving " + JSON.stringify(eventnfo).length + " bytes of event details in", evjsondetf);
+  fs.writeFileSync(evjsondetf, JSON.stringify(eventnfo, undefined, 2), 'utf-8');
+  console.log("Now that can be used by mobilizon-bridge")
 }
 
 async function localParseEventPage(page, directive) {
@@ -44,7 +75,6 @@ async function localParseEventPage(page, directive) {
     }
     return JSON.stringify(result);
   });
-  // fucking god!
   // https://stackoverflow.com/questions/52045947/nodejs-puppeteer-how-to-use-page-evaluate
   if(data && data.length > 2) {
     const cleanHrefs = _.uniq(_.map(JSON.parse(data), function(href) {
