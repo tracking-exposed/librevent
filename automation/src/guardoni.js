@@ -23,20 +23,27 @@ async function beforeDirectives(page, profile, directives) {
 }
 
 async function getEvent(page, directive) {
-  // this function is invoked when an event is rendered 
+  // this function is invoked when an event is rendered,
+  // and considering the different variation Facebook enact,
+  // we should build from a page of our a variety of different events 
+  // and test if the are correctly acquired.
   const eventDetails = await page.evaluate(() => {
     const sctns = document.querySelectorAll('section');
     const desrows = sctns[0].querySelectorAll('tr');
     const img = document.querySelector('img[role="img"]');
 
-    return JSON.stringify({
+    const mandatory = {
       rowcount: desrows.length,
       sectioncount: sctns.length,
       dates: desrows[0].innerText,
       when: desrows[0].querySelector('div').innerText,
       description: sctns[1].innerText,
-      src: img.getAttribute('src'),
-    })
+    }
+
+    if(img && img.getAttribute('src'))
+      mandatory.src = img.getAttribute('src');
+
+    return JSON.stringify(mandatory);
   });
 
   const evfname = directive.eventId + '_' + moment().format("YYYY-MM-DD-HH-mm");
