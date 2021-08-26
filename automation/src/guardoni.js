@@ -27,6 +27,8 @@ async function getEvent(page, directive) {
   // and considering the different variation Facebook enact,
   // we should build from a page of our a variety of different events 
   // and test if the are correctly acquired.
+
+  /*
   const eventDetails = await page.evaluate(() => {
     const sctns = document.querySelectorAll('section');
     const desrows = sctns[0].querySelectorAll('tr');
@@ -41,18 +43,23 @@ async function getEvent(page, directive) {
     }
 
     if(img && img.getAttribute('src'))
-      mandatory.src = img.getAttribute('src');
+      mandatory.image = img.getAttribute('src');
 
     return JSON.stringify(mandatory);
   });
+  const eventnfo = JSON.parse(eventDetails);
+  */
 
   const evfname = directive.eventId + '_' + moment().format("YYYY-MM-DD-HH-mm");
   const evscrout = path.join("screencapts", `${evfname}.png`);
   const evjsondetf = path.join("evdetails", `${evfname}.json`);
 
-  const eventnfo = JSON.parse(eventDetails);
+  const eventnfo = await page.$eval("[type='application/ld+json']", function(elem) {
+    return JSON.parse(elem.innerHTML);
+  });
+
   /* pieces of code from imagefetch.mineImg */
-  eventnfo.urlo = new URL(eventnfo.src);
+  eventnfo.urlo = new URL(eventnfo.image);
   eventnfo.origname = path.basename(eventnfo.urlo.pathname);
 
   await imagefetch.fetchImages(eventnfo, eventnfo.src, directive.eventId)
@@ -71,7 +78,7 @@ async function getEvent(page, directive) {
 }
 
 async function localParseEventPage(page, directive) {
- 
+
   const valuables = {};
   const data = await page.evaluate(() => {
     // debugging / inspecting inside of here is complex?
