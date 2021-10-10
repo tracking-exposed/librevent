@@ -1,3 +1,8 @@
-# Reminder how it works
+## First command:
 
-DEBUG=*,-puppeteer:*,-puppeteer-extra src/fbwatcher.js --url https://www.facebook.com/about.party/events/ --profile liberator1
+DEBUG=*,-puppeteer* src/guardoni.js --page https://www.facebook.com/about.party/events/ --profile liberator1
+
+
+## Second command:
+
+

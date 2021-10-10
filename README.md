@@ -2,6 +2,10 @@
 
 This project is build as part of [quickened interoperability](https://quickened.interoperability.tracking.exposed), which is a complex plan that include this software, in conjunction with [mobilizon](https://joinmobilizon.org). 
 
+## Getting ready
+
+    sh ./buildall.sh
+
 ### What's interoperability ? 
 
 Interoperability (_from wikipedia_) is a characteristic of a product or system, whose interfaces are completely understood, to work with other products or systems, at present or in the future, in either implementation or access, without any restrictions. While the term was initially defined for information technology or systems engineering services to allow for information exchange, a broader definition takes into account social, political, and organizational factors that impact system to system performance. Hence interoperability involves the task of building coherent services for users when the individual components are technically different and managed by different organizations.
