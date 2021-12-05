@@ -24,6 +24,10 @@ async function beforeDirectives(page, profile, directives) {
 
 async function getEvent(page, directive) {
   // this function is invoked when an event is rendered
+  // and considering the different variation Facebook enact,
+  // we should build from a page of our a variety of different events
+  // and test if the are correctly acquired.
+
   const eventDetails = await page.evaluate(() => {
     const sctns = document.querySelectorAll('section');
     const desrows = sctns[0].querySelectorAll('tr');
@@ -46,7 +50,7 @@ async function getEvent(page, directive) {
     if(sctns.length > 1)
       mandatory.description = sctns[1].innerText;
 
-    return JSON.stringify(mandatory)
+    return JSON.stringify(mandatory);
   });
 
   const evfname = directive.eventId + '_' + moment().format("YYYY-MM-DD-HH-mm");
