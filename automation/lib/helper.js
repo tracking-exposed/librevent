@@ -1,8 +1,22 @@
 const _ = require('lodash');
-const debug = require('debug')('parsers:utils:helper');
+const debug = require('debug')('lib:helper');
 const querystring = require('querystring');
+const crypto = require('crypto');
 
-const utils = require('../lib/utils');
+function hash(obj, fields) {
+    if(_.isUndefined(fields))
+        fields = _.keys(obj);
+    const plaincnt = fields.reduce(function(memo, fname) {
+        memo += (fname + "∴" +
+            JSON.stringify(_.get(obj, fname, '…miss!')) +
+            "," );
+        return memo;
+    }, "");
+    // debug("Hashing of %s", plaincnt);
+    const sha1sum = crypto.createHash('sha1');
+    sha1sum.update(plaincnt);
+    return sha1sum.digest('hex');
+};
 
 function getOffset(htmltext, node) {
     // utility for html parsing
@@ -22,10 +36,11 @@ function updateHrefUnit(unit, sourceKey) {
         _.set(unit, sourceKey, 'https://www.facebook.com' + thref );
     const bang = _.startsWith(thref, '#');
     try {
+        console.log("_AAAAA", unit);
         if(!bang) {
             unit.URLo = new URL(_.get(unit, sourceKey));
             unit.parsed = querystring.parse(unit.URLo.search);
-            unit.urlId = utils.hash({ parsedURL: unit.URLo.toString()})
+            unit.urlId = hash({ parsedURL: unit.URLo.toString()})
         }
     } catch(e) {
         debug("Unexpected error in URL parsing %s: %s", thref, e.message);

@@ -9,18 +9,18 @@ const puppeteer = require('puppeteer-extra');
 const pluginStealth = require('puppeteer-extra-plugin-stealth');
 
 const debug = require('debug')('guardoni:events');
-const bcons = require('debug')('browser:console');
 
-const urlminer = require('../../backend/parsers/urlminer');
-const imagefetch = require('../../backend/parsers/imagefetch');
+const urlminer = require('../lib/urlminer');
+const imagefetch = require('../lib/imagefetch');
+const shardoni = require('../lib/shardoni');
 
+const defaultCfgPath = path.join("config", "default.json");
 nconf.argv().env();
-
-async function beforeDirectives(page, profile, directives) {
-  // debug("Watching and duplicating browser console...");
-  // page.on('console', function(message) { bcons("%s", message.text())});
-  page.on('pageerror', function(message) { bcons(`Error: ${message}`)});
-}
+nconf.defaults({
+  config: defaultCfgPath
+});
+const configFile = nconf.get('config');
+nconf.argv().env().file(configFile);
 
 async function getEvent(page, directive) {
   // this function is invoked when an event is rendered,
@@ -113,19 +113,6 @@ async function localParseEventPage(page, directive) {
   }
 }
 
-async function keypress() {
-  process.stdin.setRawMode(true)
-  return new Promise(resolve => process.stdin.once('data', () => {
-    process.stdin.setRawMode(false)
-    resolve()
-  }))
-}
-
-async function allowResearcherSomeTimeToSetupTheBrowser() {
-  console.log("Now you can configure your chrome browser, define default settings and when you're done, press enter");
-  await keypress();
-}
-
 function buildPageDirective(url) {
   const rightUrl = url.match(/www\./) ?
     url.replace(/www\./, 'mbasic.') : url;
@@ -160,9 +147,16 @@ function buildEventsDirectives(pointerfile) {
 
 async function main() {
 
+  const helptext = `\nOptions can be set via: env , --longopts, and ${defaultCfgPath} file
+\n
+  --page or --pointer is required as option
+\nExample:\n
+./liberatev.js --page https://www.facebook.com/about.party/events/ --profile liberator1
+\n
+check documentation in https://libre.events/liberatev`;
+
   if(!nconf.get('page') && !nconf.get('pointer')) {
-    console.log("--page or --pointer is required as option");
-    console.log("check documentation in https://quickened.interoperability.tracking.exposed/guardoni");
+    console.log(helptext);
     process.exit(1);
   }
 
@@ -180,7 +174,6 @@ async function main() {
     process.exit(1);
   }
 
-
   const cwd = process.cwd();
   const dist = path.resolve(path.join(cwd, '..', 'extension', 'dist'));
   const manifest = path.resolve(path.join(cwd, '..', 'extension', 'dist', 'manifest.json'));
@@ -191,9 +184,13 @@ async function main() {
 
   const profile = nconf.get('profile');
   if(!profile) {
-    console.log("--profile it is necessary and if you don't have one: pick up a name and this tool would assist during the creation");
-    // console.log(localbrowser, "--user-data-dir=profiles/<YOUR PROFILE NAME> to init browser");
-    process.exit(1)
+    console.log("--profile it is necessary and if you don't have one: pick up a name");
+    process.exit(1);
+  }
+
+  if(profile === "DE") {
+    console.log("--profile is the default, from config/default.json, please specify one");
+    process.exit(1);
   }
 
   let setupDelay = false;
@@ -221,7 +218,7 @@ async function main() {
     });
   
     if(setupDelay)
-      await allowResearcherSomeTimeToSetupTheBrowser();
+      await shardoni.allowResearcherSomeTimeToSetupTheBrowser();
 
     const page = (await browser.pages())[0];
     _.tail(await browser.pages()).forEach(async function(opage) {
@@ -230,7 +227,7 @@ async function main() {
     });
     // the BS above should close existing open tabs except 1st
 
-    await beforeDirectives(page, profile, directives);
+    await shardoni.beforeDirectives(page, profile, directives);
     // ^^^ this execute settings that should always be active
     await operateBroweser(page, directives);
     // this loop over all the directives
@@ -262,7 +259,7 @@ async function operateTab(page, directive) {
   });
 
   debug("Directive to URL %s, Loading delay %d", directive.url, directive.loadFor);
-  await page.waitFor(directive.loadFor);
+  await page.waitForTimeout(directive.loadFor);
 
   try {
     if(directive.fblinktype == "events-page") {

@@ -3,7 +3,6 @@ const _ = require('lodash');
 const path = require('path');
 const axios = require('axios');
 const debug = require('debug')('parsers:imagefetch');
-const moment = require('moment');
 
 const helper = require('./helper');
 
