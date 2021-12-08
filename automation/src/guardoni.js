@@ -23,43 +23,43 @@ const configFile = nconf.get('config');
 nconf.argv().env().file(configFile);
 
 async function getEvent(page, directive) {
-  // this function is invoked when an event is rendered,
+  // this function is invoked when an event is rendered
   // and considering the different variation Facebook enact,
-  // we should build from a page of our a variety of different events 
+  // we should build from a page of our a variety of different events
   // and test if the are correctly acquired.
 
-  /*
   const eventDetails = await page.evaluate(() => {
     const sctns = document.querySelectorAll('section');
     const desrows = sctns[0].querySelectorAll('tr');
     const img = document.querySelector('img[role="img"]');
+    const title=document.querySelectorAll('title');;
 
     const mandatory = {
       rowcount: desrows.length,
       sectioncount: sctns.length,
       dates: desrows[0].innerText,
       when: desrows[0].querySelector('div').innerText,
-      description: sctns[1].innerText,
+      title: title[0].innerText,
     }
 
+    if (desrows.length > 1)
+      mandatory.location = desrows[1].querySelector('div').innerText;
+
     if(img && img.getAttribute('src'))
-      mandatory.image = img.getAttribute('src');
+      mandatory.src = img.getAttribute('src');
+    if(sctns.length > 1)
+      mandatory.description = sctns[1].innerText;
 
     return JSON.stringify(mandatory);
   });
-  const eventnfo = JSON.parse(eventDetails);
-  */
 
   const evfname = directive.eventId + '_' + moment().format("YYYY-MM-DD-HH-mm");
   const evscrout = path.join("screencapts", `${evfname}.png`);
   const evjsondetf = path.join("evdetails", `${evfname}.json`);
 
-  const eventnfo = await page.$eval("[type='application/ld+json']", function(elem) {
-    return JSON.parse(elem.innerHTML);
-  });
-
+  const eventnfo = JSON.parse(eventDetails);
   /* pieces of code from imagefetch.mineImg */
-  eventnfo.urlo = new URL(eventnfo.image);
+  eventnfo.urlo = new URL(eventnfo.src);
   eventnfo.origname = path.basename(eventnfo.urlo.pathname);
 
   await imagefetch.fetchImages(eventnfo, eventnfo.src, directive.eventId)
