@@ -136,6 +136,7 @@ function buildEventsDirectives(pointerfile) {
       url: 'https://mbasic.facebook.com' + eurl,
       loadFor: nconf.get('delay') ? _.parseInt(nconf.get('delay')) * 1000 : 12000,
     }
+    debugger;
     retval.urlo = new URL( retval.url );
     retval.parsed = querystring.parse(retval.urlo.search);
     const chunks = _.compact(retval.urlo.pathname.split('/'));
@@ -143,6 +144,20 @@ function buildEventsDirectives(pointerfile) {
       throw new Error("Unable to parse link by pattern");
     return _.omit(retval, ['urlo', 'parsed']);
   });
+}
+
+function produceDirectives() {
+  /* this function return a list of directived that depends on
+   * the option supply via config files or via command line */
+  const pages = nconf.get('pages');
+  if(pages?.length) {
+    debug("Multiple pages access! %d", pages.length);
+    return _.flatten(_.map(pages, buildPageDirective));
+  }
+
+  return nconf.get('page') ?
+    buildPageDirective(nconf.get('page')) :
+    buildEventsDirectives(nconf.get('pointer'));
 }
 
 async function main() {
@@ -160,13 +175,8 @@ check documentation in https://libre.events/liberatev`;
     process.exit(1);
   }
 
-  let directives;
   try {
-    if(nconf.get('page'))
-      directives = buildPageDirective(nconf.get('page'));
-    else
-      directives = buildEventsDirectives(nconf.get('pointer'));
-
+    const directives = produceDirectives();
     debug("Directive built: %s", JSON.stringify(directives, undefined, 2));
   } catch (error) {
     console.log("Error in building directive: " + error.message);
