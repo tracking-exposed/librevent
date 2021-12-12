@@ -8,19 +8,31 @@ const querystring = require('querystring');
 const puppeteer = require('puppeteer-extra');
 const pluginStealth = require('puppeteer-extra-plugin-stealth');
 
-const debug = require('debug')('guardoni:events');
+const debug = require('debug')('libertadata');
+debug.enabled = true;
 
 const urlminer = require('../lib/urlminer');
 const imagefetch = require('../lib/imagefetch');
 const shardoni = require('../lib/shardoni');
 
-const defaultCfgPath = path.join("config", "default.json");
+const SCREENSHOTS = "screenshots"; // default folder name
+
+const defaultCfgPath = "libertadata.json";
+if(!fs.existsSync(defaultCfgPath)) {
+  console.log("Creating default configuration file: ", defaultCfgPath);
+  fs.writeFileSync(defaultCfgPath, JSON.stringify({
+    profile: "libertadata",
+    delay: 4,
+  }, undefined, 2));
+}
+
 nconf.argv().env();
 nconf.defaults({
   config: defaultCfgPath
 });
 const configFile = nconf.get('config');
 nconf.argv().env().file(configFile);
+
 
 async function getEvent(page, directive) {
   // this function is invoked when an event is rendered
@@ -53,8 +65,11 @@ async function getEvent(page, directive) {
     return JSON.stringify(mandatory);
   });
 
+  if(!fs.existsSync('evdetails'))
+    fs.mkdirSync('evdetails');
+
   const evfname = directive.eventId + '_' + moment().format("YYYY-MM-DD-HH-mm");
-  const evscrout = path.join("screencapts", `${evfname}.png`);
+  const evscrout = path.join(SCREENSHOTS, `${evfname}.png`);
   const evjsondetf = path.join("evdetails", `${evfname}.json`);
 
   const eventnfo = JSON.parse(eventDetails);
@@ -74,21 +89,21 @@ async function getEvent(page, directive) {
   _.unset(eventnfo, 'origname');
   console.log("Saving " + JSON.stringify(eventnfo).length + " bytes of event details in", evjsondetf);
   fs.writeFileSync(evjsondetf, JSON.stringify(eventnfo, undefined, 2), 'utf-8');
-  console.log("Now that can be used by mobilizon-bridge")
 }
 
 async function localParseEventPage(page, directive) {
 
   const valuables = {};
   const data = await page.evaluate(() => {
-    // debugging / inspecting inside of here is complex?
     const ahrefs = document.querySelectorAll('a[href^="/events/"]');
     const result = [];
     for (let i = 0; i < ahrefs.length; i++) {
       result.push(ahrefs[i].getAttribute('href'));
     }
+    console.log("X", result);
     return JSON.stringify(result);
   });
+
   // https://stackoverflow.com/questions/52045947/nodejs-puppeteer-how-to-use-page-evaluate
   if(data && data.length > 2) {
     const cleanHrefs = _.uniq(_.map(JSON.parse(data), function(href) {
@@ -97,27 +112,46 @@ async function localParseEventPage(page, directive) {
     valuables.eventHrefs = cleanHrefs;
   }
 
+  if(!fs.existsSync(SCREENSHOTS)) {
+    console.log("Creating 'screenshots' directory");
+    fs.mkdirSync(SCREENSHOTS);
+  }
+
   if(valuables.eventHrefs) {
     const fname = _.concat([ moment().format("YYYY-MM-DD+HH-mm")], _.values(_.omit(directive, [ 'quintrex', 'url', 'loadFor']))).join('+')
-    const scrout = path.join("screencapts", `${fname}.png`);
+    const scrout = path.join(SCREENSHOTS, `${fname}.png`);
     await page.screenshot({ path: scrout, type: 'png' });
     debug("Screenshot saved as %s", scrout);
 
-    const pout = path.join("pointers", `${fname}.json`);
+    const pout = "libertadata.log";
     valuables.screenshot = scrout;
-    fs.writeFileSync(pout, JSON.stringify(valuables, undefined, 2), 'utf-8');
-    console.log("Saved pointers!");
-    console.log("Now you can use --pointer ", pout);
+    fs.writeFileSync(pout, moment().format("YYYY-MM-DD HH:mm:SS") + "," +
+      _.values(valuables).join(",") + "\n", { encoding: 'utf-8', flag: 'a'});
+    // this return for the next iteration
+    return valuables;
   } else {
     console.log("Nothing saved as nothing worthy have been found!");
   }
 }
 
 function buildPageDirective(url) {
+
+  if(!url.match(/\/events\//)) {
+    console.log("Invalid page: it should finish with /events");
+    console.log(url);
+    process.exit(1);
+  }
+
   const rightUrl = url.match(/www\./) ?
     url.replace(/www\./, 'mbasic.') : url;
+
+  const delayMs = nconf.get('delay') ? (_.parseInt(nconf.get('delay')) * 1000) : 4000;
+  if(delayMs > 15000) {
+    console.log("Warning: the delay should be expressed in seconds, and seems bigger than 15 seconds: ",
+      delayMs / 1000);
+  }
   const retval = {
-    loadFor: nconf.get('delay') ? _.parseInt(nconf.get('delay')) * 1000 : 12000,
+    loadFor: delayMs,
     url: rightUrl,
   };
   retval.urlo = new URL( retval.url );
@@ -128,15 +162,12 @@ function buildPageDirective(url) {
   return [ _.omit(retval, ['urlo', 'parsed']) ];
 }
 
-function buildEventsDirectives(pointerfile) {
-  debug("Loading content and parsing JSON from %s", pointerfile);
-  const content = JSON.parse(fs.readFileSync(pointerfile, 'utf-8'));
-  return _.map(content.eventHrefs, function(eurl) {
+function buildEventsDirectives(eventHrefs) {
+  return _.map(eventHrefs, function(eurl) {
     const retval = {
       url: 'https://mbasic.facebook.com' + eurl,
-      loadFor: nconf.get('delay') ? _.parseInt(nconf.get('delay')) * 1000 : 12000,
+      loadFor: nconf.get('delay') ? _.parseInt(nconf.get('delay')) * 1000 : 5000,
     }
-    debugger;
     retval.urlo = new URL( retval.url );
     retval.parsed = querystring.parse(retval.urlo.search);
     const chunks = _.compact(retval.urlo.pathname.split('/'));
@@ -146,85 +177,42 @@ function buildEventsDirectives(pointerfile) {
   });
 }
 
-function produceDirectives() {
-  /* this function return a list of directived that depends on
-   * the option supply via config files or via command line */
-  const pages = nconf.get('pages');
-  if(pages?.length) {
-    debug("Multiple pages access! %d", pages.length);
-    return _.flatten(_.map(pages, buildPageDirective));
-  }
-
-  return nconf.get('page') ?
-    buildPageDirective(nconf.get('page')) :
-    buildEventsDirectives(nconf.get('pointer'));
-}
-
-async function main() {
-
-  const helptext = `\nOptions can be set via: env , --longopts, and ${defaultCfgPath} file
-\n
-  --page or --pointer is required as option
-\nExample:\n
-./liberatev.js --page https://www.facebook.com/about.party/events/ --profile liberator1
-\n
-check documentation in https://libre.events/liberatev`;
-
-  if(!nconf.get('page') && !nconf.get('pointer')) {
-    console.log(helptext);
-    process.exit(1);
-  }
-
-  try {
-    const directives = produceDirectives();
-    debug("Directive built: %s", JSON.stringify(directives, undefined, 2));
-  } catch (error) {
-    console.log("Error in building directive: " + error.message);
-    console.log(error.stack);
-    process.exit(1);
-  }
-
-  const cwd = process.cwd();
-  const dist = path.resolve(path.join(cwd, '..', 'extension', 'dist'));
-  const manifest = path.resolve(path.join(cwd, '..', 'extension', 'dist', 'manifest.json'));
-  if(!fs.existsSync(manifest)) {
-    console.log('cd ..; cd extension; npm run build:dist');
-    process.exit(1);
-  }
-
+async function browserExecution(directives) {
   const profile = nconf.get('profile');
   if(!profile) {
     console.log("--profile it is necessary and if you don't have one: pick up a name");
     process.exit(1);
   }
 
-  if(profile === "DE") {
-    console.log("--profile is the default, from config/default.json, please specify one");
-    process.exit(1);
+  const default_profile_name = "libertadata"
+  if(profile === "liberadata") {
+    console.log("--profile is not set. The tool uses the default ", default_profile_name);
+    console.log("you can configure it in 'libertadata.json' config file, or specify with --config");
   }
 
   let setupDelay = false;
-  const udd = path.resolve(path.join('profiles', profile));
+  const udd = path.resolve(profile);
   if(!fs.existsSync(udd)) {
-    console.log("--profile name hasn't an associated directory: " + udd + "\nLet's create it!");
-    // console.log(localbrowser," --user-data-dir=profiles/path to initialize a new profile");
-    // process.exit(1)
+    console.log("--profile libertadata hasn't a directory associated: creating!");
     fs.mkdirSync(udd);
     setupDelay = true;
+  }
+
+  let executablePath = nconf.get('chrome') || shardoni.getChromePath();
+  if(!executablePath) {
+    console.log("--chrome should be a path and can point to chromium executable");
+    console.log("you can configure it in 'libertadata.json' config file, or specify with --config");
+    process.exit(1);
   }
 
   let browser = null;
   try {
     puppeteer.use(pluginStealth());
     const browser = await puppeteer.launch({
-        headless: false,
-        userDataDir: udd,
-        // executablePath:  "C:\\program\ files\ \(x86\)\\Google\\Chrome\\Application\\chrome.exe",
-        args: ["--no-sandbox",
-          "--disabled-setuid-sandbox",
-          "--load-extension=" + dist,
-          "--disable-extensions-except=" + dist
-        ],
+      headless: false,
+      userDataDir: udd,
+      executablePath,
+      args: ["--no-sandbox", "--disabled-setuid-sandbox" ],
     });
   
     if(setupDelay)
@@ -239,25 +227,24 @@ check documentation in https://libre.events/liberatev`;
 
     await shardoni.beforeDirectives(page, profile, directives);
     // ^^^ this execute settings that should always be active
-    await operateBroweser(page, directives);
-    // this loop over all the directives
+
+    const retval = [];
+    // await page.setViewport({width: 1024, height: 768});
+    for (directive of directives) {
+      try {
+        const r = await operateTab(page, directive);
+        retval.push(r);
+      } catch(error) {
+        debug("operateTab in %s — error: %s", directive.url, error.message);
+      }
+    }
     await browser.close();
+    return retval;
+
   } catch(error) {
     console.log("Error in operateBrowser (collection fail):", error);
     await browser.close();
     process.exit(1);
-  }
-  process.exit(0);
-}
-
-async function operateBroweser(page, directives) {
-  // await page.setViewport({width: 1024, height: 768});
-  for (directive of directives) {
-    try {
-      await operateTab(page, directive);
-    } catch(error) {
-      debug("operateTab in %s — error: %s", directive.url, error.message);
-    }
   }
 }
 
@@ -273,15 +260,53 @@ async function operateTab(page, directive) {
 
   try {
     if(directive.fblinktype == "events-page") {
-      await localParseEventPage(page, directive);
+      return await localParseEventPage(page, directive);
     } else if (directive.fblinktype == "events") {
-      await getEvent(page, directive);
+      return await getEvent(page, directive);
     }
   } catch(error) {
     console.log("Error in page operations", error.message, error.stack);
   }
+}
 
-  debug("— Completed operation");
+async function main() {
+
+  const helptext = `Options can be specify with --longopts, or in ${defaultCfgPath} config\n
+  --page https://www.facebook.com/about.party/events/
+  --pages firstpage,secondpage\n\n
+This tool creates DIRECTORY 'screenshots' and 'evdetails' 
+                   and FILE 'libertadata.jso'n and 'libertadata.log'
+check documentation in https://quickened.interoperability.tracking.exposed/libertadata`;
+
+  if(!nconf.get('page') && !nconf.get('pages') ) {
+    console.log(helptext);
+    process.exit(1);
+  }
+
+  let directives = null;
+  try {
+    
+    /* this function return a list of directived that depends on
+    * the option supply via config files or via command line */
+    const pages = nconf.get('pages');
+    if(pages?.length) {
+      debug("Multiple pages access! %d", pages.length);
+      directives = _.flatten(_.map(pages, buildPageDirective));
+    }
+
+    directives = buildPageDirective(nconf.get('page')) 
+  } catch (error) {
+    console.log("Error in building directive: " + error.message);
+    console.log(error.stack);
+    process.exit(1);
+  }
+
+  debug("Connecting to %j", _.map(directives, 'url'));
+  const pointers = await browserExecution(directives);
+  directives = buildEventsDirectives(pointers[0].eventHrefs);
+  debug("Connecting to %j", _.map(directives, 'url'));
+  const completed = await browserExecution(directives);
+  console.log("Now files in 'evdetails' can be used by mobilizon-bridge");
 }
 
 main ();
