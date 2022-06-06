@@ -5,9 +5,17 @@ export function mineEvent (node) {
        https://www.facebook.com/events/996875664473238/ */
 
     const h2s = node.querySelectorAll('h2');
-    console.log(_.map(h2s, 'textContent'));
-    const eventTime = h2s[0].textContent;
-    const eventTitle = h2s[1].textContent;
+    const h2list = _.map(h2s, 'textContent');
+    const { eventTime, eventTitle, leftovers } = _.reduce(h2list, (memo, h2) => {
+        if (!memo.eventTitle) {
+            memo.eventTitle = h2;
+        } else if (!memo.eventTime) {
+            memo.eventTime = h2;
+        } else {
+            memo.leftovers.push(h2);
+        }
+        return memo;
+    }, { eventTime: null, eventTitle: null, leftovers: []});
 
     const bordered = _.reduce(node.querySelectorAll('div'), function (memo, n) {
         if (Array.from(n.style).indexOf('border-radius') !== -1) { memo.push({node: n, testsize: n.textContent.length }); }
@@ -28,7 +36,7 @@ export function mineEvent (node) {
         // should refer with positional '<i>' ?
         return n.textContent;
     });
-
+    console.log(potexts, eventTime, eventTitle, linkcombo);
     return {
         potexts,
         eventTime,

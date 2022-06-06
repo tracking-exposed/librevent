@@ -1,5 +1,5 @@
 const _ = require('lodash');
-const MongoClient = require('mongodb3').MongoClient;
+const MongoClient = require('mongodb').MongoClient;
 const debug = require('debug')('lib:mongodb');
 const nconf = require('nconf');
 
