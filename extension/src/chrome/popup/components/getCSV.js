@@ -8,12 +8,11 @@ import OndemandVideoIcon from '@material-ui/icons/OndemandVideo';
 import AccountBoxIcon from '@material-ui/icons/AccountBox';
 import List from '@material-ui/core/List';
 
-function ListItemLink(props) {
+function ListItemLink (props) {
     return <ListItem component="a" {...props} />;
 }
 
-class InfoBox extends React.Component{
-
+class InfoBox extends React.Component {
     render () {
         const eventcsv = config.API_ROOT + '/personal/' + this.props.publicKey + '/events' + '/csv';
         const previewcsv = config.API_ROOT + '/personal/' + this.props.publicKey + '/previews' + '/csv';

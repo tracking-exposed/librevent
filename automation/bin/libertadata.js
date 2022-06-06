@@ -275,7 +275,7 @@ async function main() {
   --page https://www.facebook.com/about.party/events/
   --pages firstpage,secondpage\n\n
 This tool creates DIRECTORY 'screenshots' and 'evdetails' 
-                   and FILE 'libertadata.jso'n and 'libertadata.log'
+                   and FILE 'libertadata.json' and 'libertadata.log'
 check documentation in https://quickened.interoperability.tracking.exposed/libertadata`;
 
   if(!nconf.get('page') && !nconf.get('pages') ) {

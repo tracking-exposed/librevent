@@ -1,11 +1,11 @@
 // Import other utils to handle the DOM and scrape data.
-import $ from 'jquery';
 import _ from 'lodash';
 
 import {createPanel} from './panel';
 import config from './config';
 import hub from './hub';
 import {registerHandlers} from './handlers/index';
+import { mineEvent } from './parser';
 
 // bo is the browser object, in chrome is named 'chrome', in firefox is 'browser'
 const bo = chrome || browser;
@@ -23,10 +23,10 @@ let randomUUID =
 // Frequency of url change and decision
 const hrefPERIODICmsCHECK = 4000;
 let lastURL = null;
-const FB_PAGE_SELECTOR = 'body';
+const FB_PAGE_SELECTOR = '[role="main"]';
 const cacheSize = {
   seen: 0,
-  sentTimes: 0,
+  sentTimes: 0
 };
 
 // Boot the user script. This is the first function called.
@@ -43,15 +43,17 @@ function boot () {
   // Lookup the current user and decide what to do.
   localLookup(response => {
     // `response` contains the user's public key, we save it global for the blinks
-    console.log(`Librevent received: ${JSON.stringify(response, undefined, 2)} from localLookup`);
+    console.log(`Librevent local settings: ${JSON.stringify(response, undefined, 2)} from localLookup`);
 
     /* these parameters are loaded from localstorage */
     config.publicKey = response.publicKey;
     config.active = response.active;
     config.ux = response.ux;
 
-    if (config.active !== true)
-      console.log("librevent looks disabled, as this is a 0.x version, it is ignored"); // return;
+    if (config.active !== true) {
+      console.log('librevent looks disabled, you should enabled it via popup');
+      return;
+    }
 
     initializeBlinks();
     window.setInterval(hrefUpdateMonitor, hrefPERIODICmsCHECK);
@@ -64,35 +66,38 @@ function phase (path) {
   f(path);
 }
 
-function acceptableHref(pathname) {
+function acceptableHref (pathname) {
  /* the events path are five:
   * https://www.facebook.com/events?source=46&action_history=null
-  * https://www.facebook.com/events/440531403865204/?acontext=%7B%22even 
-  * + page event + pg/page event */
-  return !!pathname.match(/^\/events/);
+  * https://www.facebook.com/events/440531403865204/?acontext=%7B%22even
+  * + page event + pg/page event
+  * 
+  * but now we support only direct event page!
+  *  */
+  return !!pathname.match(/^\/events\/(\d+)/);
 }
 
-function meaningfulCachedDifference(elem) {
+function meaningfulCachedDifference (elem) {
   const ts = elem.outerHTML.length;
   const fivepercentless = (ts / 20) * 19;
   let retval = false;
 
-  if(ts < 4000) {
-    console.debug("Page considered too early, way too small to be collected");
+  if (ts < 4000) {
+    console.debug('Page considered too early, way too small to be collected');
   } else if (cacheSize.seen < fivepercentless) {
-    console.debug("Observed a size update from", cacheSize.seen, "to", ts);
+    console.debug('Observed a size update from', cacheSize.seen, 'to', ts);
     retval = true;
   }
 
-  // cause to blink the 
-  if(!retval) phase('video.seen');
+  // cause to blink the
+  if (!retval) phase('video.seen');
 
   cacheSize.seen = ts;
   cacheSize.sentTimes++;
   return retval;
 }
 
-function cleanCache() {
+function cleanCache () {
   cacheSize.seen = 0;
   cacheSize.sentTimes = 0;
 }
@@ -100,8 +105,8 @@ function cleanCache() {
 function hrefUpdateMonitor () {
   // check if is a path we should monitor
   phase('video.wait');
-  if(!acceptableHref(window.location.pathname)) {
-    console.debug(window.location.pathname, "Ignored pathname as only events are considered");
+  if (!acceptableHref(window.location.pathname)) {
+    // console.debug(window.location.pathname, 'Ignored pathname as only events are considered');
     return;
   }
   // fetch the elment
@@ -138,7 +143,15 @@ function hrefUpdateMonitor () {
   phase('video.send');
 
   console.debug(JSON.stringify(phases.counters.video));
+  let metadata = {};
+  try {
+    metadata = mineEvent(elem);
+    console.log("mined successfully", metadata);
+  } catch(error) {
+    metadata.error = error.message;
+  }
   hub.event('newContent', {
+    metadata,
     element: elem.outerHTML,
     href: window.location.href,
     when: Date(),
@@ -155,7 +168,7 @@ function localLookup (callback) {
     {
       type: 'localLookup',
       payload: {
-        userId: 'local', // at the moment is fixed to 'local'
+        userId: 'local' // at the moment is fixed to 'local'
       }
     },
     callback,
@@ -210,10 +223,8 @@ bo.runtime.sendMessage({type: 'chromeConfig'}, response => {
  * the function below is called in the code, when the condition is
  * met, and make append the proper span */
 var phases = {
-  // adv: {seen: advSeen},
   video: {seen: videoSeen, wait: videoWait, send: videoSend},
   counters: {
-    // adv: {seen: 0},
     video: {seen: 0, wait: 0, send: 0}
   }
 };
@@ -221,7 +232,6 @@ var phases = {
 const VIDEO_WAIT = 'video wait';
 const VIDEO_SEEN = 'video seen';
 const VIDEO_SEND = 'video send';
-// const SEEN_ADV = 'seen adv';
 
 const logo = (width = '10px', height = '10px', color = '#000') => {
   return `<svg style="vertical-align: middle; padding: 5px;" width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 310 310">
@@ -232,71 +242,60 @@ const logo = (width = '10px', height = '10px', color = '#000') => {
   `;
 };
 
-function initializeBlinks() {
+function initializeBlinks () {
   config.blinks = createPanel(
     {
       [VIDEO_WAIT]: {color: '#00aefe'},
       [VIDEO_SEEN]: {color: '#269072'},
-      [VIDEO_SEND]: {color: '#c03030'},
-      // [SEEN_ADV]: {color: '#ffb545'}
+      [VIDEO_SEND]: {color: '#c03030'}
     },
     `
 <div class="panel">
-    <abbr>
-      Event Liberator Assistant: currently enabled!
-    </abbr>
-    <hr />
-    <p style="font-size: 1.2rem">This is a browser extention you installed. Data is processed for archiving and repourposing on federated networks.</p>
-    <p style="font-size: 1.2rem">Watch as the nearby icons <span>${logo(
-      '10px',
-      '10px',
-      '#bbb',
-    )}</span> blink: each color/position is activate in a different stage in the evidence collection.</p>
-    <br /><br />
-    <ul style="list-style-type: none;">
-        <li style="font-size: 1.2rem">${logo(
-          '15px',
-          '15px',
-          '#00aefe',
-        )} New URL seen, waitching page grows</li>
-        <li style="font-size: 1.2rem">${logo(
-          '15px',
-          '15px',
-          '#269072',
-        )} Page grow enough to have new data</li>
-        <li style="font-size: 1.2rem">${logo(
-          '15px',
-          '15px',
-          '#c03030',
-        )} HTML content is sent to server (<a href="${config.WEB_ROOT}/personal/#${
-      config.publicKey
-    }" target=_blank>access your data</a>).</li> <!--
-        <li style="font-size: 1.2rem">${logo(
-          '15px',
-          '15px',
-          '#ffb545',
-        )} Advertising spotted and sent</li> -->
-        <!-- if you read this code, please consider a small git-commit as contribution :)
-             we're short in resources and the project is ambitious! -->
-    </ul>
+  <abbr>
+    Event Liberator Assistant: currently running!
+  </abbr>
+  <hr />
+  <p style="font-size: 1.2rem">This is a browser extention you installed. Data is processed for archiving and repourposing on federated networks.</p>
+  <p style="font-size: 1.2rem">Watch as the nearby icons <span>${logo(
+    '10px',
+    '10px',
+    '#bbb',
+  )}</span> blink: each color/position is activate in a different stage in the evidence collection.</p>
+  <br /><br />
+  <ul style="list-style-type: none;">
+    <li style="font-size: 1.2rem">${logo(
+      '15px',
+      '15px',
+      '#00aefe',
+      )} New URL seen, waitching page grows</li>
+    <li style="font-size: 1.2rem">${logo(
+      '15px',
+      '15px',
+      '#269072',
+      )} Page grow enough to have new data</li>
+    <li style="font-size: 1.2rem">${logo(
+      '15px',
+      '15px',
+      '#c03030',
+    )} HTML content is sent to server (<a href="${config.WEB_ROOT}/personal/#${
+    config.publicKey
+  }" target=_blank>access your data</a>).</li> 
+  </ul>
 </div>
 `,
   );
 }
 
 /* below the 'span creation' function mapped in the dict phases above */
-function videoWait (path) {
+function videoWait () {
   phases.counters.video.wait += 1;
   config.blinks[VIDEO_WAIT]();
 }
-function videoSeen (path) {
+function videoSeen () {
   phases.counters.video.seen += 1;
   config.blinks[VIDEO_SEEN]();
 }
-function videoSend (path) {
+function videoSend () {
   phases.counters.video.send += 1;
   config.blinks[VIDEO_SEND]();
-}
-function advSeen (path) {
-  config.blinks[SEEN_ADV]();
 }

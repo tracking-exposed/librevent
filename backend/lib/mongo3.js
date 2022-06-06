@@ -1,6 +1,6 @@
 const _ = require('lodash');
 const MongoClient = require('mongodb3').MongoClient;
-const debug = require('debug')('lib:mongo3');
+const debug = require('debug')('lib:mongodb');
 const nconf = require('nconf');
 
 var savedMongoUri = null;

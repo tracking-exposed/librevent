@@ -17,24 +17,20 @@ const bo = chrome || browser;
 const styles = {
     width: '400px',
     backgroundColor: 'black',
-    color: 'white',
+    color: 'white'
 };
 
-class Popup extends React.Component{
-
+class Popup extends React.Component {
   constructor (props) {
       super(props);
       this.state = { status: 'fetching' };
       try {
         bo.runtime.sendMessage({ type: 'localLookup' }, (userSettings) => {
-          console.log("here got", userSettings);
-          if(userSettings && userSettings.publicKey)
-            this.setState({ status: 'done', data: userSettings });
-          else
-            this.setState({ status: 'error', data: userSettings });
+          console.log('here got', userSettings);
+          if (userSettings && userSettings.publicKey) { this.setState({ status: 'done', data: userSettings }); } else { this.setState({ status: 'error', data: userSettings }); }
         });
-      } catch(e) {
-        console.log("catch error", e.message, runtime.lastError);
+      } catch (e) {
+        console.log('catch error', e.message);
         this.state = { status: 'error', data: ''};
       }
     }
@@ -43,13 +39,12 @@ class Popup extends React.Component{
       const version = config.VERSION;
       const timeago = moment.duration(moment() - moment(config.BUILDISODATE)).humanize() + ' ago';
 
-      if(!this.state)
-        return (<div>Loading...</div>)
+      if (!this.state) { return (<div>Loading...</div>); };
 
       console.log('popup props status', this.props, this.state);
 
-      if(this.state.status !== 'done') {
-        console.log("Incomplete info before render");
+      if (this.state.status !== 'done') {
+        console.log('Incomplete info before render');
         return (
           <div style={styles}>
             <Card>
@@ -70,7 +65,7 @@ class Popup extends React.Component{
               <Settings active={this.state.data.active} />
               <FormHelperText>See, Review or Delete the data you sent</FormHelperText>
               <GetCSV publicKey={this.state.data.publicKey } />
-              <FormHelperText>Which can be any useful link?</FormHelperText>
+              <FormHelperText>External Links</FormHelperText>
               <InfoBox />
           </Card>
           <small>version {version}, released {timeago}</small>
