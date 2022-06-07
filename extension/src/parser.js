@@ -1,4 +1,4 @@
-import _ from 'lodash';
+import _, { isArrayLikeObject } from 'lodash';
 
 export function mineEvent (node) {
     /* this works for page such as
@@ -17,31 +17,42 @@ export function mineEvent (node) {
         return memo;
     }, { eventTime: null, eventTitle: null, leftovers: []});
 
-    const bordered = _.reduce(node.querySelectorAll('div'), function (memo, n) {
-        if (Array.from(n.style).indexOf('border-radius') !== -1) { memo.push({node: n, testsize: n.textContent.length }); }
-        return memo;
-    }, []);
+    console.log("--", eventTime, eventTitle, leftovers);
 
-    const x = _.last(_.orderBy(bordered, 'testsize'));
-    const cleanlinks = x.node.querySelectorAll('a[role="link"]');
-    const linkcombo = _.map(cleanlinks, function (n) {
+    const fields = ['x', 'y', 'width', 'height', 'top', 'width', 'right', 'left',
+        // all the fields are w3c standard, except for
+        // 'area', which is calcultated below
+        'area'];
+
+    const elems = node.querySelectorAll('h2 > span');
+    const infos = _.map(elems, function (e) {
+        const coord = e.getBoundingClientRect();
+        coord.area = coord.width * coord.height;
         return {
+            ..._.pick(coord, fields),
+            text: e.textContent,
+            classList: Array.from(e.classList).join('-')
+        };
+    });
+
+    const alllinkse = node.querySelectorAll('a[role="link"]');
+    const links = _.map(alllinkse, function (n) {
+        const coord = n.getBoundingClientRect();
+        coord.area = coord.width * coord.height;
+        return {
+            ..._.pick(coord, fields),
             text: n.textContent,
             href: n.getAttribute('href')
         };
     });
 
-    const potexts = _.map(node.querySelectorAll("span[dir='auto'] > div"), function (n) {
-        // too many dirty data returns from here,
-        // should refer with positional '<i>' ?
-        return n.textContent;
-    });
-    console.log(potexts, eventTime, eventTitle, linkcombo);
+    console.log('----', links, infos);
     return {
-        potexts,
         eventTime,
         eventTitle,
-        linkcombo
+        leftovers,
+        links,
+        infos
     };
 }
 

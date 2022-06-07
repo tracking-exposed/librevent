@@ -18,6 +18,7 @@ function processHTMLs(supporter, received) {
     });
     /* different URL type causes different type */
     const linktype = received.href.match(/\/events\/(\d+)/) ? "event" : "previews";
+    debug("Available keys before saving %j", _.keys(received));
     const evelif = {
         id,
         linktype,
@@ -104,7 +105,8 @@ async function processEvents(req) {
     const upres = await mongo3
         .updateOne(mongoc, nconf.get('schema').supporters, { publicKey: supporter.publicKey}, supporter);
 
-    debug("Written %d htmls, types %j supporter", _.size(htmls), _.map(htmls, 'linktype'));
+    debug("Written %d htmls, types %j supporter %s",
+        _.size(htmls), _.map(htmls, 'linktype'), upres.pseudo);
 
     await mongoc.close();
     return { "json": {
