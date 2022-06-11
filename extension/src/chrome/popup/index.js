@@ -66,7 +66,7 @@ function main () {
         ReactDOM.render(
             <ThemeProvider theme={theme}>
                  <a target='_blank' href={config.WEB_ROOT} style={lessStandardHref}>
-                    <img style={imgstyle} src='/quintrex-logo.png' />
+                    <img style={imgstyle} src='/libr.events.morphing.gif' />
                 </a>
                 <Popup publicKey={publicKey} />
             </ThemeProvider>, document.getElementById('main')

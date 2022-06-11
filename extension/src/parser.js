@@ -1,4 +1,4 @@
-import _, { isArrayLikeObject } from 'lodash';
+import _ from 'lodash';
 
 export function mineEvent (node) {
     /* this works for page such as
