@@ -185,7 +185,7 @@ async function browserExecution(directives) {
   }
 
   const default_profile_name = "libertadata"
-  if(profile === "liberadata") {
+  if(profile === "libertadata") {
     console.log("--profile is not set. The tool uses the default ", default_profile_name);
     console.log("you can configure it in 'libertadata.json' config file, or specify with --config");
   }
@@ -193,7 +193,7 @@ async function browserExecution(directives) {
   let setupDelay = false;
   const udd = path.resolve(profile);
   if(!fs.existsSync(udd)) {
-    console.log("--profile libertadata hasn't a directory associated: creating!");
+    console.log("--profile %s hasn't a directory associated: creating!",profile);
     fs.mkdirSync(udd);
     setupDelay = true;
   }
@@ -289,7 +289,7 @@ check documentation in https://quickened.interoperability.tracking.exposed/liber
     /* this function return a list of directived that depends on
     * the option supply via config files or via command line */
     const pages = nconf.get('pages');
-    if(pages?.length) {
+    if(pages && pages.length) {
       debug("Multiple pages access! %d", pages.length);
       directives = _.flatten(_.map(pages, buildPageDirective));
     }
@@ -303,7 +303,19 @@ check documentation in https://quickened.interoperability.tracking.exposed/liber
 
   debug("Connecting to %j", _.map(directives, 'url'));
   const pointers = await browserExecution(directives);
-  directives = buildEventsDirectives(pointers[0].eventHrefs);
+  let eventIds = pointers[0].eventHrefs;
+  debug("list of event ids:", eventIds)
+  const skip = nconf.get('skip')
+  if(skip){
+    const skipIds = skip.split(',');
+    for (let i=0; i < skipIds.length; i++) {
+      eventIds = eventIds.filter(function(elem){
+        return elem != "/events/"+ skipIds[i].toString();
+      });
+    }
+    debug("list of cleaned event ids:", eventIds)
+  }
+  directives = buildEventsDirectives(eventIds);
   debug("Connecting to %j", _.map(directives, 'url'));
   const completed = await browserExecution(directives);
   console.log("Now files in 'evdetails' can be used by mobilizon-bridge");
