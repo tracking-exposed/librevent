@@ -15,11 +15,8 @@ const InfoBox = createReactClass({
       const fediverse = config.WEB_ROOT + '/fediverse';
 
       return (
-        <Card style={{
-          'textAlign': 'center',
-          'display': 'block !important'
-        }}>
-          <CardActions>
+        <Card>
+          <CardActions style={{ justifyContent: 'center' }}>
             <Button size="small" color="secondary" href={about} target="_blank">
               know more
             </Button>

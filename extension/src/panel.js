@@ -1,4 +1,4 @@
-import { css } from "jquery";
+import { dispatchIconClick } from './app';
 
 const infoIconSVG = `
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
@@ -30,18 +30,24 @@ export function createElement (tag, cssProp = {}, parent = document.body, id = n
 }
 
 const containerCSS = {
-  position: 'absolute',
-  top: '50rem',
+  position: 'fixed',
+  top: '40%',
   left: '0rem',
   display: 'flex',
   flexDirection: 'column',
-  zIndex: 9999
+  zIndex: 9999,
+  backgroundColor: '#ecd6ff99',
+  borderRadius: '0px 20px 20px 0px',
+  border: '#ecd6ff 1px solid'
 };
 
 const circleCSS = {
   width: '1.4rem',
   height: '1.4rem',
-  padding: '0.6rem'
+  margin: '0.6rem',
+  padding: '2px',
+  backgroundColor: 'white',
+  borderRadius: '15px'
 };
 
 const helpCSS = {
@@ -50,50 +56,32 @@ const helpCSS = {
   top: '20px',
   left: '20px',
   background: 'white',
-  minWidth: '450px',
+  minWidth: '600px',
   border: '1px solid #eee',
-  boxShadow: '2px 2px 8px 0 rgba(0, 0, 0, 0.2)',
-  fontFamily: 'Roboto, Arial, sans-serif;',
+  boxShadow: '6px 6px 18px 2px rgba(0, 0, 0, 0.2)',
 
   visibility: 'hidden'
 };
-
-let visibilityTimerId = null;
-
-/**
- * Check if the page is in full screen
- */
-function getIsFullScreen () {
-  return window.innerHeight === screen.height;
-}
 
 /**
  * Create the panel
  * @param {object} Object like: {[EVENT_NAME]: {color: string}}
  */
 export function createPanel (events, helpBody = '') {
-  const alreadyInitializedPanel = [...document.querySelectorAll('#panel')]
+  const alreadyInitializedPanel = [...document.querySelectorAll('#panel')];
   if (alreadyInitializedPanel.length > 0) {
     // console.warn('EVICOAS > panel ===}> panel is already initialized, maybe extension reloaded twice?');
     alreadyInitializedPanel.forEach(p => document.body.removeChild(p));
   }
 
-  if (visibilityTimerId) {
-    clearInterval(visibilityTimerId);
-  }
-
-  const gray = '#bbb';
-
+  const gray = '#aaa';
   const container = createElement('div', containerCSS, document.body, 'panel');
 
   const blinkingIcons = Object.entries(events).map(([eventName, val]) => {
-    const eventIcon = createElement('div', {
-      ...circleCSS,
-      transition: 'all 0.3s ease'
-    }, container, eventName);
+    const eventIcon = createElement('div', circleCSS, container, eventName);
     eventIcon.innerHTML = trexIconSVG(gray);
-    eventIcon.addEventListener('click', () => {
-      console.debug("Handle click on TRex Icon SVG");
+    eventIcon.addEventListener('click', (e) => {
+      dispatchIconClick(e.target.parentElement.id);
     });
     return [eventName, eventIcon, val];
   });
@@ -115,6 +103,12 @@ export function createPanel (events, helpBody = '') {
       : 'hidden';
   });
 
+  document.querySelector('.panel').addEventListener('mouseout', () => {
+    if (help.style.visibility === 'visible') {
+      help.style.visibility = 'hidden';
+    }
+  });
+
   const nameBlink = blinkingIcons
   .map(([eventName, eventIcon, val]) => {
     const blink = (time = 1000) => {
@@ -131,30 +125,6 @@ export function createPanel (events, helpBody = '') {
     return [eventName, blink];
   });
 
-  visibilityTimerId = setInterval(() => {
-    const isFullScreen = getIsFullScreen();
-    container.style.visibility = isFullScreen ? 'hidden' : 'visible';
-
-    checkTheatreMode();
-  }, 2000);
-
-  window.addEventListener('resize', checkTheatreMode);
-
   return Object.fromEntries(nameBlink);
 }
 
-function checkTheatreMode () {
-  const container = document.getElementById('panel')
-  const videoElements = [...document.querySelectorAll('video')];
-
-  // NOTE: is there a YouTube state where there more then one video in the page?
-  if (videoElements.length === 1) {
-    const video = videoElements[0];
-
-    const videoWidth = Number(video.style.width.slice(0, -2));
-    const isTheatreMode = videoWidth === window.innerWidth;
-    container.style.paddingTop = isTheatreMode
-      ? (Number(video.style.height.slice(0, -2)) + 73) + 'px'
-      : 0;
-  }
-}

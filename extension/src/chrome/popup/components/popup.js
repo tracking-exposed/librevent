@@ -50,7 +50,7 @@ class Popup extends React.Component {
             <Card>
                 <Alert severity="error">
                     <AlertTitle>Error</AlertTitle>
-                    Extension isn't initialized yet — <strong>Access <a href="https://www.facebook.com" target="_blank">facebook.com</a>.</strong>
+                    Librevent isn't initialized you should access <a href="https://www.facebook.com" target="_blank">facebook.com</a>, also because this tool works only in Facebook events page.
                 </Alert>
                 <InfoBox />
             </Card>
@@ -61,7 +61,7 @@ class Popup extends React.Component {
       return (
         <div style={styles}>
           <Card>
-              <FormHelperText>Events Liberator Assistant</FormHelperText>
+              <FormHelperText>This works only on events page, <a href='https://www.facebook.com/events/795277934295961' target='_blank'>like this</a>.</FormHelperText>
               <Settings active={this.state.data.active} />
               <FormHelperText>See, Review or Delete the data you sent</FormHelperText>
               <GetCSV publicKey={this.state.data.publicKey } />

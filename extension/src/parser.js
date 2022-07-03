@@ -17,7 +17,7 @@ export function mineEvent (node) {
         return memo;
     }, { eventTime: null, eventTitle: null, leftovers: []});
 
-    console.log("--", eventTime, eventTitle, leftovers);
+    console.log('--', eventTime, eventTitle, leftovers);
 
     const fields = ['x', 'y', 'width', 'height', 'top', 'width', 'right', 'left',
         // all the fields are w3c standard, except for
@@ -28,11 +28,13 @@ export function mineEvent (node) {
     const infos = _.map(elems, function (e) {
         const coord = e.getBoundingClientRect();
         coord.area = coord.width * coord.height;
-        return {
+        const rv = {
             ..._.pick(coord, fields),
             text: e.textContent,
             classList: Array.from(e.classList).join('-')
         };
+        e.style = 'border: red 1px 1px 1px 1px solid;';
+        return rv;
     });
 
     const alllinkse = node.querySelectorAll('a[role="link"]');

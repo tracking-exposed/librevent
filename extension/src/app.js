@@ -1,10 +1,10 @@
 // Import other utils to handle the DOM and scrape data.
 import _ from 'lodash';
 
-import {createPanel} from './panel';
+import { createPanel } from './panel';
 import config from './config';
 import hub from './hub';
-import {registerHandlers} from './handlers/index';
+import { registerHandlers } from './handlers/index';
 import { mineEvent } from './parser';
 
 // bo is the browser object, in chrome is named 'chrome', in firefox is 'browser'
@@ -61,17 +61,12 @@ function boot () {
   });
 }
 
-function phase (path) {
-  const f = _.get(phases, path);
-  f(path);
-}
-
 function acceptableHref (pathname) {
  /* the events path are five:
   * https://www.facebook.com/events?source=46&action_history=null
   * https://www.facebook.com/events/440531403865204/?acontext=%7B%22even
   * + page event + pg/page event
-  * 
+  *
   * but now we support only direct event page!
   *  */
   return !!pathname.match(/^\/events\/(\d+)/);
@@ -89,9 +84,6 @@ function meaningfulCachedDifference (elem) {
     retval = true;
   }
 
-  // cause to blink the
-  if (!retval) phase('video.seen');
-
   cacheSize.seen = ts;
   cacheSize.sentTimes++;
   return retval;
@@ -103,13 +95,12 @@ function cleanCache () {
 }
 
 function hrefUpdateMonitor () {
-  // check if is a path we should monitor
-  phase('video.wait');
   if (!acceptableHref(window.location.pathname)) {
-    // console.debug(window.location.pathname, 'Ignored pathname as only events are considered');
+    console.debug(window.location.pathname, 'Ignored pathname as only events are considered');
     return;
   }
-  // fetch the elment
+  // check if the main element is present: this might also causes a few race
+  // condition, in the case of slow network. can it be? TO BE TESTED.
   const elem = document.querySelector(FB_PAGE_SELECTOR);
   if (!elem) {
     console.log(
@@ -128,7 +119,6 @@ function hrefUpdateMonitor () {
 
   // continue the step, if new, clean cache
   if (diff) {
-    phase('video.seen');
     cleanCache();
     randomUUID =
       Math.random()
@@ -140,14 +130,12 @@ function hrefUpdateMonitor () {
   }
 
   if (!meaningfulCachedDifference(elem)) return;
-  phase('video.send');
 
-  console.debug(JSON.stringify(phases.counters.video));
   let metadata = {};
   try {
     metadata = mineEvent(elem);
-    console.log("mined successfully", metadata);
-  } catch(error) {
+    console.log('mined successfully', metadata);
+  } catch (error) {
     metadata.error = error.message;
   }
   hub.event('newContent', {
@@ -208,30 +196,40 @@ bo.runtime.sendMessage({type: 'chromeConfig'}, response => {
   boot();
 });
 
-/*
-.########..##.......####.##....##.##....##..######.
-.##.....##.##........##..###...##.##...##..##....##
-.##.....##.##........##..####..##.##..##...##......
-.########..##........##..##.##.##.#####.....######.
-.##.....##.##........##..##..####.##..##.........##
-.##.....##.##........##..##...###.##...##..##....##
-.########..########.####.##....##.##....##..######.
-*/
+/* **************************************************************
+ ..########....##.........####...##....##...##....##....######...
+ ..##.....##...##..........##....###...##...##...##....##....##..
+ ..##.....##...##..........##....####..##...##..##.....##........
+ ..########....##..........##....##.##.##...#####.......######...
+ ..##.....##...##..........##....##..####...##..##...........##..
+ ..##.....##...##..........##....##...###...##...##....##....##..
+ ..########....########...####...##....##...##....##....######...
+ ************************************************************** */
 
-/*
- * phases are all the div which can appears on the right bottom.
- * the function below is called in the code, when the condition is
- * met, and make append the proper span */
-var phases = {
-  video: {seen: videoSeen, wait: videoWait, send: videoSend},
-  counters: {
-    video: {seen: 0, wait: 0, send: 0}
+let currentPhase = null;
+export function dispatchIconClick (id) {
+
+  console.debug('Handling a click to: ', id);
+  if (!id || !id.length) return;
+
+  if (!currentPhase) {
+    const node = document.getElementById(id);
+    const backup = node.innerHTML;
+    node.innerHTML = '<p style="width:120px;background-color:white; margin:2px">Not an event page!</p>';
+    window.setTimeout(() => {
+      node.innerHTML = backup;
+    }, 600);
+  } else if (currentPhase === 'first' && id === 'first') {
+  } else if (currentPhase === 'second' && id === 'second') {
+  } else if (currentPhase === 'third' && id === 'third') {
+  } else {
   }
-};
+  console.log('id is', id);
+}
 
-const VIDEO_WAIT = 'video wait';
-const VIDEO_SEEN = 'video seen';
-const VIDEO_SEND = 'video send';
+const LOGO_FIRST_POSITION = 'first';
+const LOGO_SECOND_POSITION = 'second';
+const LOGO_THIRD_POSITION = 'third';
 
 const logo = (width = '10px', height = '10px', color = '#000') => {
   return `<svg style="vertical-align: middle; padding: 5px;" width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 310 310">
@@ -242,60 +240,51 @@ const logo = (width = '10px', height = '10px', color = '#000') => {
   `;
 };
 
+/*
+  <abbr style="background-color: cornsilk; padding:2px">Works only on a Facebook event page!</abbr>
+  <p style="font-size: 12px"><b>Click on the icons</b> ${logo(
+    '12px',
+    '12px',
+    '#666',
+  )}</span> the evidence collection.</p>
+  <br />                                                              */
+
 function initializeBlinks () {
   config.blinks = createPanel(
     {
-      [VIDEO_WAIT]: {color: '#00aefe'},
-      [VIDEO_SEEN]: {color: '#269072'},
-      [VIDEO_SEND]: {color: '#c03030'}
+      [LOGO_FIRST_POSITION]: {color: '#00aefe'},
+      [LOGO_SECOND_POSITION]: {color: '#269072'},
+      [LOGO_THIRD_POSITION]: {color: '#c03030'}
     },
     `
 <div class="panel">
-  <abbr>
-    Event Liberator Assistant: currently running!
-  </abbr>
+  <span style="font-size:2em">
+    <a href="https://libr.events" target="_blank">Librevents</a> browser extension
+  </span>
   <hr />
-  <p style="font-size: 1.2rem">This is a browser extention you installed. Data is processed for archiving and repourposing on federated networks.</p>
-  <p style="font-size: 1.2rem">Watch as the nearby icons <span>${logo(
-    '10px',
-    '10px',
-    '#bbb',
-  )}</span> blink: each color/position is activate in a different stage in the evidence collection.</p>
-  <br /><br />
+  <p>Note: at the moment this works only if Facebook interface is in English; Legend:</p>
   <ul style="list-style-type: none;">
     <li style="font-size: 1.2rem">${logo(
       '15px',
       '15px',
       '#00aefe',
-      )} New URL seen, waitching page grows</li>
+      )} Event available, (you might need to click on "<b>See more</b>").</li>
     <li style="font-size: 1.2rem">${logo(
       '15px',
       '15px',
       '#269072',
-      )} Page grow enough to have new data</li>
+      )} Click the green icon to see what the extension would process.</li>
     <li style="font-size: 1.2rem">${logo(
       '15px',
       '15px',
       '#c03030',
-    )} HTML content is sent to server (<a href="${config.WEB_ROOT}/personal/#${
+    )} Liberate the event! Configure your settings <a href="${config.WEB_ROOT}/personal/#${
     config.publicKey
-  }" target=_blank>access your data</a>).</li> 
+  }" target='_blank'>on Librevent server</a>.</li> 
   </ul>
+  <hr />
+  <i>Move out to close</i>
 </div>
 `,
   );
-}
-
-/* below the 'span creation' function mapped in the dict phases above */
-function videoWait () {
-  phases.counters.video.wait += 1;
-  config.blinks[VIDEO_WAIT]();
-}
-function videoSeen () {
-  phases.counters.video.seen += 1;
-  config.blinks[VIDEO_SEEN]();
-}
-function videoSend () {
-  phases.counters.video.send += 1;
-  config.blinks[VIDEO_SEND]();
 }
