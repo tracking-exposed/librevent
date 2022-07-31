@@ -28,6 +28,9 @@ class InfoBox extends React.Component {
               <ListItemLink href={personalLink} target="_blank">More on the events you liberated</ListItemLink>
             </ListItem>
 
+          </List>
+        );
+        /*
             <ListItem button>
               <ListItemIcon>
                 <StayCurrentLandscapeIcon />
@@ -41,9 +44,7 @@ class InfoBox extends React.Component {
               </ListItemIcon>
               <ListItemLink href={previewcsv} target="_blank">Event Previews CSV</ListItemLink>
             </ListItem>
-
-          </List>
-        );
+          */
     }
 };
 

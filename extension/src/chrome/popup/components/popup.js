@@ -60,6 +60,7 @@ class Popup extends React.Component {
 
       return (
         <div style={styles}>
+          <small>version {version}, released {timeago}</small>
           <Card>
               <FormHelperText>This works only on events page, <a href='https://www.facebook.com/events/795277934295961' target='_blank'>like this</a>.</FormHelperText>
               <Settings active={this.state.data.active} />
@@ -68,7 +69,6 @@ class Popup extends React.Component {
               <FormHelperText>External Links</FormHelperText>
               <InfoBox />
           </Card>
-          <small>version {version}, released {timeago}</small>
         </div>
       );
     }
