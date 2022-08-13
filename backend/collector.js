@@ -7,6 +7,9 @@ const bodyParser = require('body-parser');
 const debug = require('debug')('quintrex:collector');
 const nconf = require('nconf');
 const cors = require('cors');
+const x = require('@_vecna/mobilizon-poster');
+
+console.log(x);
 
 const api = require('./lib/api');
 const mongo3 = require('./lib/mongo3');

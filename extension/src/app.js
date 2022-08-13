@@ -217,19 +217,23 @@ export function dispatchIconClick (id) {
     const backup = node.innerHTML;
     node.innerHTML = '<p style="width:120px;background-color:white; margin:2px">Not an event page!</p>';
     window.setTimeout(() => {
+      /* when it is clicked, for 600 ms it display "not an event page" if you are not 
+       * in an event page */
       node.innerHTML = backup;
     }, 600);
   } else if (currentPhase === 'first' && id === 'first') {
+    handlePhase('first');
+    shiftPhase({first: true, second: false, third: false });
   } else if (currentPhase === 'second' && id === 'second') {
+    handlePhase('second');
+    shiftPhase({first: false, second: true, third: false });
   } else if (currentPhase === 'third' && id === 'third') {
+    handlePhase('third');
+    shiftPhase({first: false, second: false, third: true });
   } else {
+    console.log(`Unmanaged condition? id is ${id} and phase ${currentPhase}`);
   }
-  console.log('id is', id);
 }
-
-const LOGO_FIRST_POSITION = 'first';
-const LOGO_SECOND_POSITION = 'second';
-const LOGO_THIRD_POSITION = 'third';
 
 const logo = (width = '10px', height = '10px', color = '#000') => {
   return `<svg style="vertical-align: middle; padding: 5px;" width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 310 310">
@@ -240,21 +244,25 @@ const logo = (width = '10px', height = '10px', color = '#000') => {
   `;
 };
 
-/*
-  <abbr style="background-color: cornsilk; padding:2px">Works only on a Facebook event page!</abbr>
-  <p style="font-size: 12px"><b>Click on the icons</b> ${logo(
-    '12px',
-    '12px',
-    '#666',
-  )}</span> the evidence collection.</p>
-  <br />                                                              */
+function handlePhase(phase) {
+  console.log(`We should handle phase #${phase} and we're currently in ${currentPhase}`);
+}
+
+function shiftPhase(cfg) {
+  /* this shiftPhase could take as option only a phase name, but instead takes
+   * all the JSON representing the phases. 'currentPhase' is a variable
+   * that might be embedded here, but right now stays outside */
+  console.log("I should do", cfg);
+}
+
+const FIRST_COLOR = '#00aefe', SECOND_COLOR = '#269072', THIRD_COLOR = '#c03030';
 
 function initializeBlinks () {
   config.blinks = createPanel(
     {
-      [LOGO_FIRST_POSITION]: {color: '#00aefe'},
-      [LOGO_SECOND_POSITION]: {color: '#269072'},
-      [LOGO_THIRD_POSITION]: {color: '#c03030'}
+      ['first']: {color: FIRST_COLOR },
+      ['second']: {color: SECOND_COLOR },
+      ['third']: {color: THIRD_COLOR },
     },
     `
 <div class="panel">
@@ -265,19 +273,21 @@ function initializeBlinks () {
   <p>Note: at the moment this works only if Facebook interface is in English; Legend:</p>
   <ul style="list-style-type: none;">
     <li style="font-size: 1.2rem">${logo(
-      '15px',
-      '15px',
-      '#00aefe',
+      'first',
+      '15px', '15px',
+      FIRST_COLOR,
       )} Event available, (you might need to click on "<b>See more</b>").</li>
     <li style="font-size: 1.2rem">${logo(
+      'second',
       '15px',
       '15px',
-      '#269072',
+      SECOND_COLOR,
       )} Click the green icon to see what the extension would process.</li>
     <li style="font-size: 1.2rem">${logo(
+      'third',
       '15px',
       '15px',
-      '#c03030',
+      THIRD_COLOR,
     )} Liberate the event! Configure your settings <a href="${config.WEB_ROOT}/personal/#${
     config.publicKey
   }" target='_blank'>on Librevent server</a>.</li> 
