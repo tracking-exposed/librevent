@@ -18,16 +18,19 @@ const InfoBox = createReactClass({
         <Card>
           <CardActions style={{ justifyContent: 'center' }}>
             <Button size="small" color="secondary" href={about} target="_blank">
-              know more
+              about
             </Button>
             <Button size="small" color="primary" href={privacy} target="_blank">
-              privacy policy
+              privacy
             </Button>
             <Button size="small" color="secondary" href="https://github.com/tracking-exposed/librevent/" target="_blank">
               code
             </Button>
             <Button size="small" color="primary" href={fediverse} target="_blank">
               fediverse
+            </Button>
+            <Button size="small" color="secondary" href="https://www.youtube.com/watch?v=F5xwZ0olSqA" target="_blank">
+              disappear
             </Button>
           </CardActions>
         </Card>

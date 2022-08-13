@@ -56,12 +56,12 @@ class Settings extends React.Component {
       );
     }
 
-    const doSetResearchTag = (event) => {
+    const doSetOption = (event) => {
       const targetData = event.target.id;
       const update = {};
       update[targetData] = event.target.value;
       this.setState(update);
-      console.log("Saving in", targetData, event.target.value)
+      console.log("Read option", targetData, "updating with value:", event.target.value)
       saveUpdate(update);
     };
 
@@ -72,25 +72,24 @@ class Settings extends React.Component {
     const entryStyle = { display: 'flex', flexDirection: 'row', alignItems: 'center' };
     return (
     <List component="nav" aria-label="main settings">
-      <ListItem style={{entryStyle}}>
-        <FormHelperText>Backend system</FormHelperText>
-        <Input id="backend" value={this.state.backend} style={{ marginLeft: 8 }} onChange={doSetResearchTag} />
-      </ListItem>
 
       <ListItem style={{entryStyle}}>
-        <FormHelperText>Mobilizone instance</FormHelperText>
-        <Input id="mobilizon" value={this.state.mobilizon} style={{ marginLeft: 8 }} onChange={doSetResearchTag} />
+        <FormHelperText>Mobilizone</FormHelperText>
+        <Input id="mobilizon" value={this.state.mobilizon} style={{ marginLeft: 8, width: 380 }} onChange={doSetOption} />
       </ListItem>
 
       <ListItem style={{entryStyle}}>
         <FormHelperText>Login</FormHelperText>
-        <Input id="login" value={this.state.login} style={{ marginLeft: 8 }} onChange={doSetResearchTag} />
+        <Input id="login" value={this.state.login} style={{ marginLeft: 8, width: 380 }} onChange={doSetOption} />
       </ListItem>
 
       <ListItem style={{entryStyle}}>
         <FormHelperText>Password</FormHelperText>
-        <Input id="password" value={this.state.password} style={{ marginLeft: 8 }} onChange={doSetResearchTag} />
+        <Input id="password" type="password" value={this.state.password} style={{ marginLeft: 8, width: 340 }} onChange={doSetOption} />
       </ListItem>
+
+      <hr />
+      <hr />
 
       <ListItem>
 
@@ -108,6 +107,12 @@ class Settings extends React.Component {
           />
         </ListItemSecondaryAction>
       </ListItem>
+
+      <ListItem style={{entryStyle}}>
+        <FormHelperText>Backend server</FormHelperText>
+        <Input id="backend" value={this.state.backend} style={{ marginLeft: 8, width: 280 }} onChange={doSetOption} />
+      </ListItem>
+
     </List>);
   }
 };

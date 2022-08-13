@@ -220,8 +220,14 @@ export function dispatchIconClick (id) {
       node.innerHTML = backup;
     }, 600);
   } else if (currentPhase === 'first' && id === 'first') {
+    /* phase one is when the system look for a "See More" and look 
+     * if the event can be already collected */
   } else if (currentPhase === 'second' && id === 'second') {
+    /* phase two is when by clicking on the buttons the event would be 
+     * liberated */
   } else if (currentPhase === 'third' && id === 'third') {
+    /* phase three is an event liberated / already there should not be
+     * duplicated */
   } else {
   }
   console.log('id is', id);
@@ -283,7 +289,7 @@ function initializeBlinks () {
   }" target='_blank'>on Librevent server</a>.</li> 
   </ul>
   <hr />
-  <i>Move out to close</i>
+  <i>Move the mouse to close</i>
 </div>
 `,
   );
