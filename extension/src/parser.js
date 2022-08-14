@@ -17,7 +17,7 @@ export function mineEvent (node) {
         return memo;
     }, { eventTime: null, eventTitle: null, leftovers: []});
 
-    console.log('--', eventTime, eventTitle, leftovers);
+    // console.log('--', eventTime, eventTitle, leftovers);
 
     const fields = ['x', 'y', 'width', 'height', 'top', 'width', 'right', 'left',
         // all the fields are w3c standard, except for
@@ -48,7 +48,7 @@ export function mineEvent (node) {
         };
     });
 
-    console.log('----', links, infos);
+    // console.log('----', links, infos);
     return {
         eventTime,
         eventTitle,

@@ -1,6 +1,8 @@
 {
   "schema": {
       "supporters": "supporters",
+      "activities": "activities",
+      "tokens": "tokens",
       "htmls": "htmls",
       "metadata": "metadata",
       "anomalies": "anomalies",
@@ -8,7 +10,7 @@
   },
   "mongoHost": "localhost",
   "mongoPort": "27017",
-  "mongoDb": "quintrex",
+  "mongoDb": "librevent",
   "port": 13000,
   "interface": "127.0.0.1"
 }

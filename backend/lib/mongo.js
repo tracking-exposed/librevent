@@ -1,7 +1,12 @@
+/* 
+ * Compared to the other of Tracking Exposed,
+ * this script has been upgraded to use mongo4 */
+
 const _ = require('lodash');
 const MongoClient = require('mongodb').MongoClient;
 const debug = require('debug')('lib:mongodb');
 const nconf = require('nconf');
+
 
 var savedMongoUri = null;
 function mongoUri(forced) {
@@ -33,30 +38,17 @@ async function clientConnect(config) {
     /* concurrency: <Int>, uri: <mongo address> */
     if(!config) config = {};
 
-    const poolSize = config.concurrency ? config.concurrency : 10;
-    mongoUri(config.uri);
-    /* 
-     * this is make with (some) cargo cult programming
-     * I don't fully understand if is the most optimal way. 
-     * Please, if you have input about this, my goal is 
-     * don't open a mongo connection every time the caller 
-     * execute a query
-     */
-    return new Promise((resolve, reject) => (
-        MongoClient.connect(mongoUri(), {
-            poolSize,
-            useNewUrlParser: true
-        }, (err, client) => {
-            if(err) {
-                err.message = `mongo.clientConnect error in connecting at ${mongoUri()}`;
-                debug(err.message);
-                reject(err);
-            } else {
-                resolve(client);
-            }
-        })
-    ))
-};
+    const uri = mongoUri();
+
+    try {
+        const client = new MongoClient(uri);
+        await client.connect();
+        return client;
+    } catch(err) {
+        debug("Error in connecting to mongo [%s]: %s", uri, err.message);
+        return null;
+    }
+}
 
 async function listCollections(mongoc) {
     return mongoc

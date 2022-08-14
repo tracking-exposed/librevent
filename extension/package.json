@@ -1,5 +1,5 @@
 {
-  "name": "librevent",
+  "name": "librevent-extension",
   "version": "0.3.0",
   "description": "Librevent is an extension that helps Fediverse users in republishing events otherwise available only on walled-garden social network",
   "homepage": "https://libr.events",

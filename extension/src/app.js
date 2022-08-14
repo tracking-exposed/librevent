@@ -6,19 +6,18 @@ import config from './config';
 import hub from './hub';
 import { registerHandlers } from './handlers/index';
 import { mineEvent } from './parser';
+import { investigate } from './hasher';
 
 // bo is the browser object, in chrome is named 'chrome', in firefox is 'browser'
 const bo = chrome || browser;
 
+function getRandomBlock () {
+  return Math.random().toString(36).substring(2, 13) +
+    Math.random().toString(36).substring(2, 13);
+}
+
 // variable used to spot differences due to refresh and url change
-let randomUUID =
-  'INIT' +
-  Math.random()
-    .toString(36)
-    .substring(2, 13) +
-  Math.random()
-    .toString(36)
-    .substring(2, 13);
+let randomUUID = 'INIT|' + getRandomBlock();
 
 // Frequency of url change and decision
 const hrefPERIODICmsCHECK = 4000;
@@ -33,7 +32,7 @@ const cacheSize = {
 // Everything starts from here.
 function boot () {
   // this get executed only on facebook.com
-  console.log(`librevent extension settings: ${JSON.stringify(config)}`);
+  console.log(`Librevent extension settings: ${JSON.stringify(config)}`);
 
   // Register all the event handlers.
   // An event handler is a piece of code responsible for a specific task.
@@ -51,7 +50,7 @@ function boot () {
     config.ux = response.ux;
 
     if (config.active !== true) {
-      console.log('librevent looks disabled, you should enabled it via popup');
+      console.log('Librevent looks disabled, you should enabled it via popup');
       return;
     }
 
@@ -77,15 +76,18 @@ function meaningfulCachedDifference (elem) {
   const fivepercentless = (ts / 20) * 19;
   let retval = false;
 
+  cacheSize.sentTimes++;
+
   if (ts < 4000) {
-    console.debug('Page considered too early, way too small to be collected');
+    console.debug('Event triggered too early, current HTML is way too small to be collected');
   } else if (cacheSize.seen < fivepercentless) {
-    console.debug('Observed a size update from', cacheSize.seen, 'to', ts);
+    console.debug('Observed a (meaningful) size update from', cacheSize.seen,
+      'to', ts, 'page seen', cacheSize.seenTimes, 'times');
     retval = true;
   }
+  /* else: the increase was lesser than 5% so it is ignored */
 
   cacheSize.seen = ts;
-  cacheSize.sentTimes++;
   return retval;
 }
 
@@ -120,22 +122,32 @@ function hrefUpdateMonitor () {
   // continue the step, if new, clean cache
   if (diff) {
     cleanCache();
-    randomUUID =
-      Math.random()
-        .toString(36)
-        .substring(2, 15) +
-      Math.random()
-        .toString(36)
-        .substring(2, 15);
+    randomUUID = getRandomBlock().substring(28);
   }
 
-  if (!meaningfulCachedDifference(elem)) return;
+  if (!meaningfulCachedDifference(elem)) {
+    return;
+  }
+
+  if (!currentPhase) {
+    console.log('Initializing phase as first');
+    currentPhase = 'first';
+  }
+
+  let investiresult = null;
+  try {
+    investiresult = investigate(elem);
+    console.log(investiresult);
+  } catch (error) {
+    console.log('Error in investigation:', error.message);
+  }
 
   let metadata = {};
   try {
     metadata = mineEvent(elem);
-    console.log('mined successfully', metadata);
+    console.log('Event spotted and mined successfully', metadata);
   } catch (error) {
+    console.log('Event spotted but error in mining', error.message);
     metadata.error = error.message;
   }
   hub.event('newContent', {
@@ -196,6 +208,20 @@ bo.runtime.sendMessage({type: 'chromeConfig'}, response => {
   boot();
 });
 
+function runPageAnalysis () {
+  const elem = document.querySelector(FB_PAGE_SELECTOR);
+  if (!elem) { return; }
+
+  console.log('executing runPageAnalysis by click!');
+  let investiresult = null;
+  try {
+    investiresult = investigate(elem);
+    console.log(investiresult);
+  } catch (error) {
+    console.log('Error in investigation:', error.message);
+  }
+}
+
 /* **************************************************************
  ..########....##.........####...##....##...##....##....######...
  ..##.....##...##..........##....###...##...##...##....##....##..
@@ -208,8 +234,10 @@ bo.runtime.sendMessage({type: 'chromeConfig'}, response => {
 
 let currentPhase = null;
 export function dispatchIconClick (id) {
+  console.debug('Handling a click to: ', id, "and currently we're in phase", currentPhase);
+  /* when someone click on a button, check if the event is worthy of being analyzed and trimmed */
+  runPageAnalysis();
 
-  console.debug('Handling a click to: ', id);
   if (!id || !id.length) return;
 
   if (!currentPhase) {
@@ -217,17 +245,17 @@ export function dispatchIconClick (id) {
     const backup = node.innerHTML;
     node.innerHTML = '<p style="width:120px;background-color:white; margin:2px">Not an event page!</p>';
     window.setTimeout(() => {
-      /* when it is clicked, for 600 ms it display "not an event page" if you are not 
+      /* when it is clicked, for 600 ms it display "not an event page" if you are not
        * in an event page */
       node.innerHTML = backup;
     }, 600);
   } else if (currentPhase === 'first' && id === 'first') {
-    /* phase one is when the system look for a "See More" and look 
+    /* phase one is when the system look for a "See More" and look
      * if the event can be already collected */
     handlePhase('first');
     shiftPhase({first: true, second: false, third: false });
   } else if (currentPhase === 'second' && id === 'second') {
-    /* phase two is when by clicking on the buttons the event would be 
+    /* phase two is when by clicking on the buttons the event would be
      * liberated */
     handlePhase('second');
     shiftPhase({first: false, second: true, third: false });
@@ -250,25 +278,35 @@ const logo = (width = '10px', height = '10px', color = '#000') => {
   `;
 };
 
-function handlePhase(phase) {
+function handlePhase (phase) {
   console.log(`We should handle phase #${phase} and we're currently in ${currentPhase}`);
 }
 
-function shiftPhase(cfg) {
+function shiftPhase (cfg) {
   /* this shiftPhase could take as option only a phase name, but instead takes
    * all the JSON representing the phases. 'currentPhase' is a variable
    * that might be embedded here, but right now stays outside */
-  console.log("I should do", cfg);
+  console.log('I should do', cfg);
+
+  hub.event('newContent', {
+    href: window.location.href,
+    when: Date(),
+    cfg,
+    currentPhase,
+    randomUUID
+  });
 }
 
-const FIRST_COLOR = '#00aefe', SECOND_COLOR = '#269072', THIRD_COLOR = '#c03030';
+const FIRST_COLOR = '#00aefe';
+const SECOND_COLOR = '#269072';
+const THIRD_COLOR = '#c03030';
 
 function initializeBlinks () {
   config.blinks = createPanel(
     {
-      ['first']: {color: FIRST_COLOR },
-      ['second']: {color: SECOND_COLOR },
-      ['third']: {color: THIRD_COLOR },
+      'first': {color: FIRST_COLOR },
+      'second': {color: SECOND_COLOR },
+      'third': {color: THIRD_COLOR }
     },
     `
 <div class="panel">
@@ -279,21 +317,21 @@ function initializeBlinks () {
   <p>Note: at the moment this works only if Facebook interface is in English; Legend:</p>
   <ul style="list-style-type: none;">
     <li style="font-size: 1.2rem">${logo(
-      'first',
       '15px', '15px',
       FIRST_COLOR,
+      'first',
       )} Event available, (you might need to click on "<b>See more</b>").</li>
     <li style="font-size: 1.2rem">${logo(
-      'second',
       '15px',
       '15px',
       SECOND_COLOR,
+      'second',
       )} Click the green icon to see what the extension would process.</li>
     <li style="font-size: 1.2rem">${logo(
-      'third',
       '15px',
       '15px',
       THIRD_COLOR,
+      'third',
     )} Liberate the event! Configure your settings <a href="${config.WEB_ROOT}/personal/#${
     config.publicKey
   }" target='_blank'>on Librevent server</a>.</li> 

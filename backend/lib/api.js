@@ -3,7 +3,7 @@ const moment = require('moment');
 const debug = require('debug')('lib:api');
 const nconf = require('nconf');
 
-const mongo3 = require('./mongo3');
+const mongo = require('./mongo');
 const utils = require('./utils');
 const CSV = require('./CSV');
 
@@ -45,7 +45,7 @@ async function createSupporter(mongoc, publicKey) {
         when: moment().toISOString()
     });
     debug("Creating %s %s", supporter.pseudo, publicKey);
-    await mongo3.writeOne(mongoc, nconf.get('schema').supporters, supporter);
+    await mongo.writeOne(mongoc, nconf.get('schema').supporters, supporter);
     return supporter;
 }
 
@@ -80,9 +80,9 @@ async function processEvents(req) {
     }
     /* verification complete */
 
-    const mongoc = await mongo3.clientConnect();
+    const mongoc = await mongo.clientConnect();
 
-    let supporter = await mongo3.readOne(mongoc, nconf.get('schema').supporters, {
+    let supporter = await mongo.readOne(mongoc, nconf.get('schema').supporters, {
         publicKey: headers.publickey
     });
 
@@ -98,11 +98,12 @@ async function processEvents(req) {
 
     _.set(supporter, 'lastActivity', new Date());
 
+    console.log("uwu", _.size(req.body), _.keys(req.body[0]));
     const enrichedF = _.partial(processHTMLs, supporter);
     const htmls = _.map(req.body, enrichedF);
-    const results = await mongo3
+    const results = await mongo
         .insertMany(mongoc, nconf.get('schema').htmls, htmls);
-    const upres = await mongo3
+    const upres = await mongo
         .updateOne(mongoc, nconf.get('schema').supporters, { publicKey: supporter.publicKey}, supporter);
 
     debug("Written %d htmls, types %j supporter %s",
@@ -117,8 +118,8 @@ async function processEvents(req) {
 async function returnEvent(req) {
 
     const eventId = _.parseInt(req.params.eventId);
-    const mongoc = await mongo3.clientConnect();
-    const event = await mongo3.readLimit(mongoc, nconf.get('schema').metadata, {
+    const mongoc = await mongo.clientConnect();
+    const event = await mongo.readLimit(mongoc, nconf.get('schema').metadata, {
         eventId
     }, { savingTime: -1}, 30, 0);
     debug("Fetched %d event(s) for %d", _.size(event), eventId);
@@ -133,8 +134,8 @@ async function produceJSON(pk, subject) {
     const filter = pk ? _.extend(supportedTransformations[subject].filter, { publicKey: pk }) : supportedTransformations[subject].filter;
     debug("produceJSON %s -> filter %j", subject, filter);
     const MAXSIZE = 2000;
-    const mongoc = await mongo3.clientConnect();
-    const data = await mongo3.readLimit(mongoc, nconf.get('schema').metadata, filter, { savingTime: -1}, MAXSIZE, 0);
+    const mongoc = await mongo.clientConnect();
+    const data = await mongo.readLimit(mongoc, nconf.get('schema').metadata, filter, { savingTime: -1}, MAXSIZE, 0);
     await mongoc.close();
 
     if(_.size(data) == MAXSIZE)

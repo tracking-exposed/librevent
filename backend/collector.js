@@ -7,12 +7,13 @@ const bodyParser = require('body-parser');
 const debug = require('debug')('quintrex:collector');
 const nconf = require('nconf');
 const cors = require('cors');
-const x = require('@_vecna/mobilizon-poster');
 
-console.log(x);
+/* 
+const x = require('@_vecna/mobilizon-poster');
+console.log(x); */
 
 const api = require('./lib/api');
-const mongo3 = require('./lib/mongo3');
+const mongo = require('./lib/mongo');
 
 const cfgFile = "./settings.json";
 const redOn = "\033[31m";
@@ -113,7 +114,7 @@ app.use(async (req, res, next) => {
 
 (async function() {
     try {
-        await mongo3.checkMongoWorks();
+        await mongo.checkMongoWorks();
         console.log(" MongoDb connection works!");
     } catch(error) {
         console.log("Can't connect to database? Check", cfgFile, error.message);
