@@ -41,18 +41,18 @@ class Popup extends React.Component {
 
       if (!this.state) { return (<div>Loading...</div>); };
 
-      console.log('popup props status', this.props, this.state);
+      console.log(`popup props ${JSON.stringify(this.props)} state ${JSON.stringify(this.state)}`);
 
       if (this.state.status !== 'done') {
-        console.log('Incomplete info before render');
+        console.log('This status should not happen, because the publicKey is generated and therefore the "done" is always met');
         return (
           <div style={styles}>
             <Card>
-                <Alert severity="error">
-                    <AlertTitle>Error</AlertTitle>
-                    Librevent isn't initialized you should access <a href="https://www.facebook.com" target="_blank">facebook.com</a>, also because this tool works only in Facebook events page.
-                </Alert>
-                <InfoBox />
+              <Alert severity="error">
+                <AlertTitle>Error</AlertTitle>
+                Librevent isn't initialized you should access <a href="https://www.facebook.com" target="_blank">facebook.com</a>, also because this tool works only in Facebook events page (<a href='https://www.facebook.com/events/795277934295961' target='_blank'>like this</a>).
+              </Alert>
+              <InfoBox />
             </Card>
           </div>
         );
@@ -63,7 +63,7 @@ class Popup extends React.Component {
           <small>version {version}, released {timeago}</small>
           <Card>
               <FormHelperText>This works only on events page, <a href='https://www.facebook.com/events/795277934295961' target='_blank'>like this</a>.</FormHelperText>
-              <Settings active={this.state.data.active} />
+              <Settings { ...this.state.data } />
               <FormHelperText>See, Review or Delete the data you sent</FormHelperText>
               <GetCSV publicKey={this.state.data.publicKey } />
               <FormHelperText>External Links</FormHelperText>
