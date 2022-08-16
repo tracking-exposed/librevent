@@ -1,4 +1,4 @@
-import { dispatchIconClick } from './app';
+import { dispatchIconClick, DEFAULT_COLOR } from './app';
 
 const infoIconSVG = `
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
@@ -8,11 +8,11 @@ const infoIconSVG = `
 `;
 
 // style=fill, see here: https://stackoverflow.com/questions/35844589/how-to-change-svgs-path-color
-const trexIconSVG = (color) => `
+const trexIconSVG = (color, id) => `
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 310 310">
-    <path style="fill:${color}" d="M304.05 151.924a150.38 150.38 0 00-139.82-150v21.16c66.36 5.39 118.71 61.11 118.71 128.84s-52.35 123.45-118.71 128.84v21.16a150.38 150.38 0 00139.82-150zM24.41 151.924c0-67.73 52.35-123.45 118.71-128.84V1.924a150.37 150.37 0 000 300v-21.16c-66.36-5.39-118.71-61.11-118.71-128.84z"/>
-    <path style="fill:${color}" d="M102.23 62.824a102.9 102.9 0 00-42.47 131.1l18.42-10.64a81.76 81.76 0 01140.43-81.08l18.43-10.63a102.9 102.9 0 00-134.81-28.75zM194.57 222.754a81.91 81.91 0 01-105.84-21.15l-18.43 10.63a102.9 102.9 0 00177.29-102.31l-18.42 10.6a81.9 81.9 0 01-34.6 102.23z"/>
-    <path style="fill:${color}" d="M181.37 103.924a55.41 55.41 0 00-69.52 11.65l18.84 10.88a34.29 34.29 0 0156.52 32.63l18.84 10.87a55.41 55.41 0 00-24.68-66.03zM136.53 181.624a34.35 34.35 0 01-16.39-36.88l-18.84-10.82a55.4 55.4 0 0094.2 54.38l-18.85-10.88a34.33 34.33 0 01-40.12 4.2z"/>
+    <path id="first--${id}" style="fill:${color}" d="M304.05 151.924a150.38 150.38 0 00-139.82-150v21.16c66.36 5.39 118.71 61.11 118.71 128.84s-52.35 123.45-118.71 128.84v21.16a150.38 150.38 0 00139.82-150zM24.41 151.924c0-67.73 52.35-123.45 118.71-128.84V1.924a150.37 150.37 0 000 300v-21.16c-66.36-5.39-118.71-61.11-118.71-128.84z"/>
+    <path id="second--${id}" style="fill:${color}" d="M102.23 62.824a102.9 102.9 0 00-42.47 131.1l18.42-10.64a81.76 81.76 0 01140.43-81.08l18.43-10.63a102.9 102.9 0 00-134.81-28.75zM194.57 222.754a81.91 81.91 0 01-105.84-21.15l-18.43 10.63a102.9 102.9 0 00177.29-102.31l-18.42 10.6a81.9 81.9 0 01-34.6 102.23z"/>
+    <path id="third--${id}" style="fill:${color}" d="M181.37 103.924a55.41 55.41 0 00-69.52 11.65l18.84 10.88a34.29 34.29 0 0156.52 32.63l18.84 10.87a55.41 55.41 0 00-24.68-66.03zM136.53 181.624a34.35 34.35 0 01-16.39-36.88l-18.84-10.82a55.4 55.4 0 0094.2 54.38l-18.85-10.88a34.33 34.33 0 01-40.12 4.2z"/>
 </svg>
 `;
 
@@ -59,7 +59,6 @@ const helpCSS = {
   minWidth: '600px',
   border: '1px solid #eee',
   boxShadow: '6px 6px 18px 2px rgba(0, 0, 0, 0.2)',
-
   visibility: 'hidden'
 };
 
@@ -70,16 +69,15 @@ const helpCSS = {
 export function createPanel (events, helpBody = '') {
   const alreadyInitializedPanel = [...document.querySelectorAll('#panel')];
   if (alreadyInitializedPanel.length > 0) {
-    // console.warn('EVICOAS > panel ===}> panel is already initialized, maybe extension reloaded twice?');
+    // console.warn('librevent > panel ===}> panel is already initialized, maybe extension reloaded twice?');
     alreadyInitializedPanel.forEach(p => document.body.removeChild(p));
   }
 
-  const gray = '#aaa';
   const container = createElement('div', containerCSS, document.body, 'panel');
 
   const blinkingIcons = Object.entries(events).map(([eventName, val]) => {
     const eventIcon = createElement('div', circleCSS, container, eventName);
-    eventIcon.innerHTML = trexIconSVG(gray);
+    eventIcon.innerHTML = trexIconSVG(DEFAULT_COLOR, eventName);
     eventIcon.addEventListener('click', (e) => {
       dispatchIconClick(e.target.parentElement.id);
     });
@@ -118,7 +116,7 @@ export function createPanel (events, helpBody = '') {
       });
       setTimeout(() => {
         paths.forEach(path => {
-            path.setAttribute('style', `fill: ${gray}`);
+            path.setAttribute('style', `fill: ${DEFAULT_COLOR}`);
           });
         }, time);
     };

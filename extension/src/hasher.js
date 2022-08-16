@@ -35,14 +35,23 @@ const hashmap = [
     }
 ];
 
-function investigate (rootnode) {
+function seemore(rootnode) {
+
     const buttons = looks(rootnode, '[role="button"]', 'textContent', 'See more');
+
+    if(!buttons.length) {
+        return false;
+    }
 
     console.log('Adding the red border to ', buttons.length, 'w/ content:', _.map(buttons, 'textContent'));
 
     _.each(buttons, function (b) {
         b.style = 'border: red 3px solid; border-radius: 3px';
     });
+    return true;
+}
+
+function investigate (rootnode) {
 
     /*
     const imgs = looks(rootnode, 'img', 'src');
@@ -59,6 +68,10 @@ function investigate (rootnode) {
         const matched = _.find(hashmap, { hash });
 
         snode.parentNode.parentNode.style = matched ? 'border: 1px green solid' : 'border: 1px red solid';
+        /* in production should be:
+
+        1) if !matched return null;
+        2) no style hack */
 
         return {
             hash,
@@ -71,10 +84,7 @@ function investigate (rootnode) {
     }));
 
     console.log('Sorted', _.sortBy(analysis, 'order'));
-    return {
-        analysis,
-        buttons
-    };
+    return analysis.length;
 }
 
  function stringToHash (string) {
@@ -104,5 +114,6 @@ function looks (rootnode, selector, feat, match) {
 
 module.exports = {
     investigate,
-    stringToHash
+    stringToHash,
+    seemore,
 };

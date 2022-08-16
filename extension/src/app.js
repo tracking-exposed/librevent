@@ -6,7 +6,7 @@ import config from './config';
 import hub from './hub';
 import { registerHandlers } from './handlers/index';
 import { mineEvent } from './parser';
-import { investigate } from './hasher';
+import { investigate, seemore } from './hasher';
 
 // bo is the browser object, in chrome is named 'chrome', in firefox is 'browser'
 const bo = chrome || browser;
@@ -134,13 +134,12 @@ function hrefUpdateMonitor () {
     currentPhase = 'first';
   }
 
-  let investiresult = null;
-  try {
-    investiresult = investigate(elem);
-    console.log(investiresult);
-  } catch (error) {
-    console.log('Error in investigation:', error.message);
-  }
+  runPageAnalysis();
+
+  return;
+
+  /* the following code was meant for the previous approach, not useful anymore
+   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
   let metadata = {};
   try {
@@ -158,6 +157,7 @@ function hrefUpdateMonitor () {
     update: cacheSize.sentTimes,
     randomUUID
   });
+  */
 }
 
 // The function `localLookup` communicates with the **action pages**
@@ -209,36 +209,67 @@ bo.runtime.sendMessage({type: 'chromeConfig'}, response => {
 });
 
 function runPageAnalysis () {
-  const elem = document.querySelector(FB_PAGE_SELECTOR);
-  if (!elem) { return; }
+  /* this function assume to be executed in phase one and:
+   1) check if there are 'see more' button
+   2) if there are not, switch to phase two */
 
-  console.log('executing runPageAnalysis by click!');
-  let investiresult = null;
+  const elem = document.querySelector(FB_PAGE_SELECTOR);
+  if (!elem) return;
+  if (!acceptableHref(window.location.pathname)) return;
+
+  console.log('executing runPageAnalysis in phase', currentPhase);
   try {
-    investiresult = investigate(elem);
-    console.log(investiresult);
+    const buttons = seemore(elem);
+
+    if (!buttons) {
+      currentPhase = 'second';
+    } else {
+      currentPhase = 'first';
+    }
   } catch (error) {
-    console.log('Error in investigation:', error.message);
+    console.log('Error in looking for buttons to click!', error.message);
   }
 }
 
-/* **************************************************************
- ..########....##.........####...##....##...##....##....######...
- ..##.....##...##..........##....###...##...##...##....##....##..
- ..##.....##...##..........##....####..##...##..##.....##........
- ..########....##..........##....##.##.##...#####.......######...
- ..##.....##...##..........##....##..####...##..##...........##..
- ..##.....##...##..........##....##...###...##...##....##....##..
- ..########....########...####...##....##...##....##....######...
- ************************************************************** */
+function sendEvent () {
+  const elem = document.querySelector(FB_PAGE_SELECTOR);
+  if (!elem) return;
+
+  let investiresult = null;
+  try {
+    const buttons = seemore(elem);
+
+    if (!buttons) currentPhase = 'second';
+
+    investiresult = investigate(elem);
+    if (investiresult) {
+      shiftPhase({first: true, second: true, third: false });
+    }
+    const metadata = mineEvent(elem);
+    console.log('Event spotted and mined successfully', metadata);
+
+    hub.event('newContent', {
+      metadata,
+      details: investiresult,
+      element: elem.outerHTML,
+      href: window.location.href,
+      when: Date(),
+      update: cacheSize.sentTimes,
+      randomUUID
+    });
+    return true;
+  } catch (error) {
+    console.log('Error in investigation/mining metadata:', error.message);
+    return false;
+  }
+}
 
 let currentPhase = null;
 export function dispatchIconClick (id) {
   console.debug('Handling a click to: ', id, "and currently we're in phase", currentPhase);
   /* when someone click on a button, check if the event is worthy of being analyzed and trimmed */
-  runPageAnalysis();
 
-  if (!id || !id.length) return;
+  runPageAnalysis();
 
   if (!currentPhase) {
     const node = document.getElementById(id);
@@ -249,17 +280,17 @@ export function dispatchIconClick (id) {
        * in an event page */
       node.innerHTML = backup;
     }, 600);
-  } else if (currentPhase === 'first' && id === 'first') {
+  } else if (currentPhase === 'first') {
     /* phase one is when the system look for a "See More" and look
      * if the event can be already collected */
-    handlePhase('first');
     shiftPhase({first: true, second: false, third: false });
-  } else if (currentPhase === 'second' && id === 'second') {
+  } else if (currentPhase === 'second') {
     /* phase two is when by clicking on the buttons the event would be
      * liberated */
-    handlePhase('second');
-    shiftPhase({first: false, second: true, third: false });
-  } else if (currentPhase === 'third' && id === 'third') {
+    shiftPhase({first: true, second: true, third: false });
+    const result = sendEvent();
+    console.log('and resuts are', result);
+  } else if (currentPhase === 'third') {
     handlePhase('third');
     shiftPhase({first: false, second: false, third: true });
     /* phase three is an event liberated / already there should not be
@@ -269,7 +300,11 @@ export function dispatchIconClick (id) {
   }
 }
 
+export const DEFAULT_COLOR = '#aaa';
+
 const logo = (width = '10px', height = '10px', color = '#000') => {
+  /* these logos are used only in ithe HELP box, if you want to hack the one appearing into facebook
+   * UX, look at 'panel.js' and the shiftPhase function below */
   return `<svg style="vertical-align: middle; padding: 5px;" width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 310 310">
       <path style="fill:${color}" d="M304.05 151.924a150.38 150.38 0 00-139.82-150v21.16c66.36 5.39 118.71 61.11 118.71 128.84s-52.35 123.45-118.71 128.84v21.16a150.38 150.38 0 00139.82-150zM24.41 151.924c0-67.73 52.35-123.45 118.71-128.84V1.924a150.37 150.37 0 000 300v-21.16c-66.36-5.39-118.71-61.11-118.71-128.84z"/>
       <path style="fill:${color}" d="M102.23 62.824a102.9 102.9 0 00-42.47 131.1l18.42-10.64a81.76 81.76 0 01140.43-81.08l18.43-10.63a102.9 102.9 0 00-134.81-28.75zM194.57 222.754a81.91 81.91 0 01-105.84-21.15l-18.43 10.63a102.9 102.9 0 00177.29-102.31l-18.42 10.6a81.9 81.9 0 01-34.6 102.23z"/>
@@ -280,6 +315,13 @@ const logo = (width = '10px', height = '10px', color = '#000') => {
 
 function handlePhase (phase) {
   console.log(`We should handle phase #${phase} and we're currently in ${currentPhase}`);
+  _.each(document.querySelectorAll('.tre--first'), function (n) { n.style = ('fill: ' + THIRD_COLOR); });
+}
+
+function switchColor (destIdPortion, newColor) {
+  document.querySelector(`first--${destIdPortion}`).style = `fill:${newColor}`;
+  document.querySelector(`second--${destIdPortion}`).style = `fill:${newColor}`;
+  document.querySelector(`third--${destIdPortion}`).style = `fill:${newColor}`;
 }
 
 function shiftPhase (cfg) {
@@ -288,13 +330,9 @@ function shiftPhase (cfg) {
    * that might be embedded here, but right now stays outside */
   console.log('I should do', cfg);
 
-  hub.event('newContent', {
-    href: window.location.href,
-    when: Date(),
-    cfg,
-    currentPhase,
-    randomUUID
-  });
+  switchColor('first', cfg.first ? FIRST_COLOR : DEFAULT_COLOR);
+  switchColor('second', cfg.second ? SECOND_COLOR : DEFAULT_COLOR);
+  switchColor('third', cfg.third ? THIRD_COLOR : DEFAULT_COLOR);
 }
 
 const FIRST_COLOR = '#00aefe';
