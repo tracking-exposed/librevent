@@ -319,9 +319,16 @@ function handlePhase (phase) {
 }
 
 function switchColor (destIdPortion, newColor) {
-  document.querySelector(`first--${destIdPortion}`).style = `fill:${newColor}`;
-  document.querySelector(`second--${destIdPortion}`).style = `fill:${newColor}`;
-  document.querySelector(`third--${destIdPortion}`).style = `fill:${newColor}`;
+  console.log(`faulty here ${destIdPortion}`);
+  const fixed = ['first', 'second', 'third'];
+  _.each(fixed, function(prefix) {
+    const d = document.getElementById(`${prefix}--${destIdPortion}`);
+    if(d) {
+      d.style = `fill:${newColor}`;
+    } else {
+      console.log(`failure with ${prefix}--${destIdPortion}`);
+    }
+  });
 }
 
 function shiftPhase (cfg) {

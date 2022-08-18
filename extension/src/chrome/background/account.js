@@ -9,22 +9,17 @@ import db from '../db';
 const bo = chrome || browser;
 const FIXED_USER_NAME = 'librevent';
 
-// defaults of the settings stored in 'config' and controlled by popup
-const DEFAULT_SETTINGS = { active: true, ux: false };
-
 bo.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.type === 'localLookup') {
         userLookup( request.payload ? request.payload : { userId: FIXED_USER_NAME }, sendResponse);
-        return true;
-    }
-    if (request.type === 'remoteLookup') {
+    } else if (request.type === 'remoteLookup') {
         serverLookup(request.payload, sendResponse);
-        return true;
-    }
-    if (request.type === 'configUpdate') {
+    } else if (request.type === 'ConfigUpdate') {
         configUpdate(request.payload, sendResponse);
-        return true;
+    } else {
+        console.warn(`Warning: Request type unhandled ${request.type}, part of ${request}, from ${sender}`);
     }
+    return true;
 });
 
 function initializeKey() {
@@ -35,9 +30,20 @@ function initializeKey() {
         secretKey: bs58.encode(newKeypair.secretKey)
     };
 }
+
+// defaults of the settings stored in 'config' and controlled by popup
+const DEFAULT_SETTINGS = {
+    active: true,
+    ux: false,
+    backend: 'https://libr.events',
+    login: 'dummy',
+    password: undefined,
+    moblizon: 'https://mobilizon.libr.events',
+};
+
 function setDefaults(val) {
-    val.active = DEFAULT_SETTINGS.active;
-    val.ux = DEFAULT_SETTINGS.ux;
+    console.log("Setting the defaults! but we got", val);
+    val = { ...DEFAULT_SETTINGS, ...val };
     return val;
 }
 
@@ -52,7 +58,7 @@ function userLookup ({ userId }, sendResponse) {
                 sendResponse(val);
             });
         } else {
-            console.log("sending back from userLookup", userId, val);
+            // console.log(`sending back from userLookup userId=${userId} ret=${JSON.stringify(val)}`);
             sendResponse(val);
         }
     });
@@ -84,8 +90,7 @@ function configUpdate (payload, sendResponse) {
 
     const userId = FIXED_USER_NAME;
     db.get(userId).then(val => {
-        let update = _.merge(val, payload);
-        return db.set(userId, update);
+        return db.set(userId, {...val, ...payload });
     }).then(val => {
         console.log("ConfigUpdate completed and return", val)
         sendResponse(val);
