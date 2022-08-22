@@ -11,18 +11,14 @@ var state = {
 
 function handleContent (type, e) {
     state.content.push({
-        element: e.element,
-        href: e.href,
+        ...e,
         clientTime: getTimeISO8601(),
-        size: e.element.length,
-        update: e.update,
-        type: 'content',
-        randomUUID: e.randomUUID
+        type: 'liberated'
     });
     state.incremental++;
 }
 
-function handleInfo(type, e) {
+function handleInfo (type, e) {
     state.content.push(_.merge(e, {
         incremental: state.incremental,
         clientTime: getTimeISO8601(),

@@ -28,6 +28,11 @@ const cacheSize = {
   sentTimes: 0
 };
 
+// config represent the default settings, the next
+// variable is extended by the information retrieved from the popup
+// and it is initalized in boot
+let currentConfig = null;
+
 // Boot the user script. This is the first function called.
 // Everything starts from here.
 function boot () {
@@ -44,12 +49,11 @@ function boot () {
     // `response` contains the user's public key, we save it global for the blinks
     console.log(`Librevent local settings: ${JSON.stringify(response, undefined, 2)} from localLookup`);
 
-    /* these parameters are loaded from localstorage */
-    config.publicKey = response.publicKey;
-    config.active = response.active;
-    config.ux = response.ux;
+    // these parameters are loaded from localstorage
+    currentConfig = { ...config, ...response };
+    console.log(`Librevent updated settings: ${JSON.stringify(response, undefined, 2)}`);
 
-    if (config.active !== true) {
+    if (currentConfig.active !== true) {
       console.log('Librevent looks disabled, you should enabled it via popup');
       return;
     }
@@ -99,6 +103,8 @@ function cleanCache () {
 function hrefUpdateMonitor () {
   if (!acceptableHref(window.location.pathname)) {
     console.debug(window.location.pathname, 'Ignored pathname as only events are considered');
+    currentPhase = null;
+    shiftPhase({first: false, second: false, third: false});
     return;
   }
   // check if the main element is present: this might also causes a few race
@@ -129,10 +135,9 @@ function hrefUpdateMonitor () {
     return;
   }
 
-  if (!currentPhase) {
-    console.log('Initializing phase as first');
-    currentPhase = 'first';
-  }
+  console.log('Resetting phase as first');
+  currentPhase = 'first';
+  shiftPhase({first: false, second: false, third: false});
 
   runPageAnalysis();
 
@@ -207,28 +212,66 @@ bo.runtime.sendMessage({type: 'chromeConfig'}, response => {
   Object.assign(config, response);
   boot();
 });
+// Please debug/test this function knowing that in boot() we
+// initialize currentConfig
 
-function runPageAnalysis () {
-  /* this function assume to be executed in phase one and:
+export function runPageAnalysis () {
+  /* this function is invoked every time the user click on the left buttons.
    1) check if there are 'see more' button
-   2) if there are not, switch to phase two */
+   2) if there are not, switch to phase two.
+      returns always the number 'see more' present, because it might also be that
+      a 'see more' can't be clicked and should be handled differently:
+      i.e. https://www.facebook.com/events/1203183407199422
+  */
 
   const elem = document.querySelector(FB_PAGE_SELECTOR);
   if (!elem) return;
   if (!acceptableHref(window.location.pathname)) return;
 
+  let buttons = -1;
   console.log('executing runPageAnalysis in phase', currentPhase);
   try {
     const buttons = seemore(elem);
 
-    if (!buttons) {
+    if (!buttons.length) {
       currentPhase = 'second';
     } else {
       currentPhase = 'first';
     }
+
+    let message = 'Please click here to expand the event details';
+    if (buttons.length === 1) {
+      /* this might happen when there is only one button, because a
+        'see more' button might also not actually expand but remain in page */
+      currentPhase = 'third';
+      message += '; Or force by clicking on the red button';
+    }
+
+    _.each(buttons, function (b) {
+      console.log('Injecting 3 seconds message:', message);
+      dropMessage(b, message, 3000);
+    });
+
   } catch (error) {
     console.log('Error in looking for buttons to click!', error.message);
   }
+  return buttons;
+}
+
+function dropMessage (node, message, timeout) {
+  /* this function is called when the logos on the left have to dump some message,
+     the id is the target where it should appear */
+  const backup = node.innerHTML;
+  const rect = node.getBoundingClientRect();
+  node.innerHTML =
+    '<span style="font-size:12px;width:400px;z-index:999;background-color:#f0ddf0;margin:2px;position:absolute; left:'+
+    rect.left + ';bottom:' + rect.bottom + ' ">' + message + '</span>';
+
+  window.setTimeout(() => {
+  /* when it is clicked, for the time out display a message, which initially was only
+    "not an event page", in an event page, but it become more generic as a way to communicate */
+    node.innerHTML = backup;
+  }, timeout);
 }
 
 function sendEvent () {
@@ -242,20 +285,22 @@ function sendEvent () {
     if (!buttons) currentPhase = 'second';
 
     investiresult = investigate(elem);
-    if (investiresult) {
+    if (investiresult.length) {
       shiftPhase({first: true, second: true, third: false });
     }
+
     const metadata = mineEvent(elem);
     console.log('Event spotted and mined successfully', metadata);
 
     hub.event('newContent', {
       metadata,
-      details: investiresult,
+      details: _.map(investiresult, (i) => _.omit(i, ['node'])),
       element: elem.outerHTML,
       href: window.location.href,
       when: Date(),
       update: cacheSize.sentTimes,
-      randomUUID
+      randomUUID,
+      settings: _.pick(currentConfig, ['mobilizon', 'username', 'password', 'backend']),
     });
     return true;
   } catch (error) {
@@ -272,14 +317,8 @@ export function dispatchIconClick (id) {
   runPageAnalysis();
 
   if (!currentPhase) {
-    const node = document.getElementById(id);
-    const backup = node.innerHTML;
-    node.innerHTML = '<p style="width:120px;background-color:white; margin:2px">Not an event page!</p>';
-    window.setTimeout(() => {
-      /* when it is clicked, for 600 ms it display "not an event page" if you are not
-       * in an event page */
-      node.innerHTML = backup;
-    }, 600);
+    /* for 0.8 seconds display a kind of warning message */
+    dropMessage(document.getElementById(id), 'Not an event page!', 800);
   } else if (currentPhase === 'first') {
     /* phase one is when the system look for a "See More" and look
      * if the event can be already collected */
@@ -289,12 +328,13 @@ export function dispatchIconClick (id) {
      * liberated */
     shiftPhase({first: true, second: true, third: false });
     const result = sendEvent();
-    console.log('and resuts are', result);
-  } else if (currentPhase === 'third') {
-    handlePhase('third');
+    console.log('Event sent and the result is', result);
+  } else if (id === 'third' && currentPhase === 'third') {
+    /* phase three is when an event can be forcefully liberated if the user
+     * click */
     shiftPhase({first: false, second: false, third: true });
-    /* phase three is an event liberated / already there should not be
-     * duplicated */
+    const result = sendEvent();
+    console.log('Forced event sent and the result is', result);
   } else {
     console.log(`Unmanaged condition? id is ${id} and phase ${currentPhase}`);
   }
@@ -313,15 +353,9 @@ const logo = (width = '10px', height = '10px', color = '#000') => {
   `;
 };
 
-function handlePhase (phase) {
-  console.log(`We should handle phase #${phase} and we're currently in ${currentPhase}`);
-  _.each(document.querySelectorAll('.tre--first'), function (n) { n.style = ('fill: ' + THIRD_COLOR); });
-}
-
 function switchColor (destIdPortion, newColor) {
-  console.log(`faulty here ${destIdPortion}`);
   const fixed = ['first', 'second', 'third'];
-  _.each(fixed, function(prefix) {
+  _.each(fixed, function (prefix) {
     const d = document.getElementById(`${prefix}--${destIdPortion}`);
     if(d) {
       d.style = `fill:${newColor}`;
@@ -335,8 +369,6 @@ function shiftPhase (cfg) {
   /* this shiftPhase could take as option only a phase name, but instead takes
    * all the JSON representing the phases. 'currentPhase' is a variable
    * that might be embedded here, but right now stays outside */
-  console.log('I should do', cfg);
-
   switchColor('first', cfg.first ? FIRST_COLOR : DEFAULT_COLOR);
   switchColor('second', cfg.second ? SECOND_COLOR : DEFAULT_COLOR);
   switchColor('third', cfg.third ? THIRD_COLOR : DEFAULT_COLOR);
@@ -384,6 +416,5 @@ function initializeBlinks () {
   <hr />
   <i>Move the mouse to close</i>
 </div>
-`,
-  );
+`, /* NOTE: this help panel is display and close in panel.js */);
 }

@@ -62,7 +62,7 @@ class Popup extends React.Component {
         <div style={styles}>
           <small>version {version}, released {timeago}</small>
           <Card>
-              <FormHelperText>This works only on events page, <a href='https://www.facebook.com/events/795277934295961' target='_blank'>like this</a>.</FormHelperText>
+              <FormHelperText>This works only on events page, <a href='https://www.facebook.com/events/796893984823257' target='_blank'>like this</a>.</FormHelperText>
               <Settings { ...this.state.data } />
               <FormHelperText>See, Review or Delete the data you sent</FormHelperText>
               <GetCSV publicKey={this.state.data.publicKey } />

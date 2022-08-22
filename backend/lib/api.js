@@ -3,17 +3,33 @@ const moment = require('moment');
 const debug = require('debug')('lib:api');
 const nconf = require('nconf');
 
+const core = require('./core');
 const mongo = require('./mongo');
 const utils = require('./utils');
 const CSV = require('./CSV');
 
 const GUARDONI_MAX_URLS = 20;
 
+function processMINED(supporter, received) {
+
+    const id = utils.hash({href: received.href,
+        size: received.size,
+        publicKey: supporter.publicKey,
+        randomUUID: received.randomUUID,
+    });
+
+    const mined = {
+        id,
+    }
+
+    return mined;
+}
+
 function processHTMLs(supporter, received) {
 
     const id = utils.hash({href: received.href,
         size: received.size,
-        update: received.update,
+        publicKey: supporter.publicKey,
         randomUUID: received.randomUUID,
     });
     /* different URL type causes different type */
@@ -80,6 +96,7 @@ async function processEvents(req) {
     }
     /* verification complete */
 
+    const beginning = moment();
     const mongoc = await mongo.clientConnect();
 
     let supporter = await mongo.readOne(mongoc, nconf.get('schema').supporters, {
@@ -96,22 +113,38 @@ async function processEvents(req) {
         moment(supporter.lastActivity).format("HH:mm DD/MM"),
         moment.duration(moment.utc()-moment(supporter.lastActivity)).humanize() );
 
-    _.set(supporter, 'lastActivity', new Date());
-
-    console.log("uwu", _.size(req.body), _.keys(req.body[0]));
+    console.log("uwu", _.size(req.body), _.keys(req.body[0]),
+        JSON.stringify(
+            _.omit(req.body[0], ['element']),
+            undefined, 2)
+    );
     const enrichedF = _.partial(processHTMLs, supporter);
     const htmls = _.map(req.body, enrichedF);
     const results = await mongo
         .insertMany(mongoc, nconf.get('schema').htmls, htmls);
+
+    const config = req.body[0].config;
+
+    const mined = _.map(req.body, _.partial(processMINED, supporter));
+    /* supporter and config are in two different collections, both handled in 'core', 
+     * where the authentication token of mobilizon is fetched */
+    const flushdetails = await core.flushEvents(mined, supporter, config)
+
     const upres = await mongo
         .updateOne(mongoc, nconf.get('schema').supporters, { publicKey: supporter.publicKey}, supporter);
 
-    debug("Written %d htmls, types %j supporter %s",
-        _.size(htmls), _.map(htmls, 'linktype'), upres.pseudo);
+    const conclusion = moment();
+
+    _.set(supporter, 'lastActivity', new Date());
+    debug("Written %d htmls, and %d mined events for supporter %s, took %s",
+        _.size(htmls), _.size(mined), upres.pseudo, moment.duration(conclusion - beginning).humanize());
 
     await mongoc.close();
     return { "json": {
-        "status": "OK", "info": upres
+        "status": "OK",
+        upres,
+        flushdetails,
+        seconds: moment.duration(conclusion - beginning).asSeconds(),
     }};
 };
 

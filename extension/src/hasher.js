@@ -1,4 +1,5 @@
 import _ from 'lodash';
+import { runPageAnalysis } from './app';
 
 const hashmap = [
     {
@@ -35,25 +36,42 @@ const hashmap = [
     }
 ];
 
-function seemore(rootnode) {
-
+function seemore (rootnode) {
     const buttons = looks(rootnode, '[role="button"]', 'textContent', 'See more');
 
-    if(!buttons.length) {
-        return false;
-    }
+    if (!buttons.length) return [];
 
     console.log('Adding the red border to ', buttons.length, 'w/ content:', _.map(buttons, 'textContent'));
 
     _.each(buttons, function (b) {
         b.style = 'border: red 3px solid; border-radius: 3px';
+        b.addEventListener('mouseout', runPageAnalysis);
     });
-    return true;
+    return buttons;
+}
+
+function recursiveLinksDigging (node) {
+    // console.log(node, node.tagName, node.childNodes);
+
+    if (node.tagName === 'A') {
+        return {
+            text: node.textContent,
+            href: node.getAttribute('href')
+        };
+    }
+
+    if (!node.childNodes && node.tagName !== 'A') {
+        return null;
+    }
+
+    if (node.childNodes) {
+        return _.compact(_.flatten(_.map(node.childNodes, recursiveLinksDigging)));
+    }
+    console.log('Unhandled condition in recursive function');
 }
 
 function investigate (rootnode) {
-
-    /*
+    /* these were other two nodes under investigation, and perhaps the images are still relevant
     const imgs = looks(rootnode, 'img', 'src');
     const svg = looks(rootnode, 'svg'); */
 
@@ -68,23 +86,35 @@ function investigate (rootnode) {
         const matched = _.find(hashmap, { hash });
 
         snode.parentNode.parentNode.style = matched ? 'border: 1px green solid' : 'border: 1px red solid';
-        /* in production should be:
+        // console.log(order, matched, hash, snode.parentNode.parentNode.textContent, snode);
 
-        1) if !matched return null;
-        2) no style hack */
+        const links = recursiveLinksDigging(snode.parentNode.parentNode);
 
-        return {
+        /*  ************************
+        in production should be:
+            1) if !matched return null;
+            2) no style hack
+        but, practically, this selection based on hash isn't working yet well
+        **************************** */
+        const retval = {
             hash,
             matched,
             order,
-            length: snode.outerHTML.length,
+            text: snode.parentNode.parentNode.textContent,
+            size: snode.outerHTML.length,
             node: snode,
-            rect
+            rect,
         };
+
+        if (links.length) {
+            retval.links = links;
+        }
+
+        return retval;
     }));
 
     console.log('Sorted', _.sortBy(analysis, 'order'));
-    return analysis.length;
+    return analysis;
 }
 
  function stringToHash (string) {
@@ -108,7 +138,7 @@ function looks (rootnode, selector, feat, match) {
         }
         return node;
     });
-    console.log(`for ${selector} found ${rv.length}`);
+    // console.log(`for ${selector} found ${rv.length}`);
     return rv;
 }
 

@@ -38,7 +38,7 @@ const containerCSS = {
   zIndex: 9999,
   backgroundColor: '#ecd6ff99',
   borderRadius: '0px 20px 20px 0px',
-  border: '#ecd6ff 1px solid'
+  border: '#ecd6ff 1px solid',
 };
 
 const circleCSS = {
@@ -47,7 +47,8 @@ const circleCSS = {
   margin: '0.6rem',
   padding: '2px',
   backgroundColor: 'white',
-  borderRadius: '15px'
+  borderRadius: '15px',
+  cursor: 'grab',
 };
 
 const helpCSS = {
@@ -59,7 +60,7 @@ const helpCSS = {
   minWidth: '600px',
   border: '1px solid #eee',
   boxShadow: '6px 6px 18px 2px rgba(0, 0, 0, 0.2)',
-  visibility: 'hidden'
+  visibility: 'hidden',
 };
 
 /**
@@ -102,6 +103,8 @@ export function createPanel (events, helpBody = '') {
   });
 
   document.querySelector('.panel').addEventListener('mouseout', () => {
+    /* this method isn't cleaning the interface properly and basically
+     * don't allow any click into the help panel, even if links are there */
     if (help.style.visibility === 'visible') {
       help.style.visibility = 'hidden';
     }

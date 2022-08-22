@@ -58,11 +58,14 @@ class Settings extends React.Component {
     }
 
     const doSetOption = (event) => {
+      /* this function invoked as everyupdate in the input text below */
       const targetData = event.target.id;
       const update = {};
       update[targetData] = event.target.value;
       this.setState(update);
-      console.log("Read option", targetData, "updating with value:", event.target.value)
+      console.log('Read option', targetData,
+        'and updating with value:', event.target.value);
+
       saveUpdate(update);
     };
 
