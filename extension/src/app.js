@@ -239,19 +239,19 @@ export function runPageAnalysis () {
       currentPhase = 'first';
     }
 
-    let message = 'Please click here to expand the event details';
+    let message = 'Please click to EXPAND the event details';
     if (buttons.length === 1) {
       /* this might happen when there is only one button, because a
         'see more' button might also not actually expand but remain in page */
       currentPhase = 'third';
-      message += '; Or force by clicking on the red button';
+      message += '; Or FORCE by clicking on the red logo-button';
+      shiftPhase({first: false, second: false, third: true});
     }
 
     _.each(buttons, function (b) {
-      console.log('Injecting 3 seconds message:', message);
-      dropMessage(b, message, 3000);
+      console.log('Injecting for 10 seconds message:', message);
+      dropMessage(b, message, 10000);
     });
-
   } catch (error) {
     console.log('Error in looking for buttons to click!', error.message);
   }
@@ -259,13 +259,14 @@ export function runPageAnalysis () {
 }
 
 function dropMessage (node, message, timeout) {
+  if (!node) return console.log("dropMessage suppressed, #id not available:", message);
   /* this function is called when the logos on the left have to dump some message,
      the id is the target where it should appear */
   const backup = node.innerHTML;
   const rect = node.getBoundingClientRect();
   node.innerHTML =
-    '<span style="font-size:12px;width:400px;z-index:999;background-color:#f0ddf0;margin:2px;position:absolute; left:'+
-    rect.left + ';bottom:' + rect.bottom + ' ">' + message + '</span>';
+    '<span style="font-size:12px;width:400px;z-index:9999;background-color:#f0ddf0;margin:2px;left:' +
+    (rect.left + 20) + ';bottom:' + (rect.bottom + 20) + ' ">' + message + '</span>';
 
   window.setTimeout(() => {
   /* when it is clicked, for the time out display a message, which initially was only
@@ -315,6 +316,10 @@ export function dispatchIconClick (id) {
   /* when someone click on a button, check if the event is worthy of being analyzed and trimmed */
 
   runPageAnalysis();
+
+  if (!document.getElementById(id)) {
+    dropMessage(document.getElementById('info-icon'), 'Not clear what you clicked?', 3800);
+  }
 
   if (!currentPhase) {
     /* for 0.8 seconds display a kind of warning message */

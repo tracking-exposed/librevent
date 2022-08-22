@@ -44,7 +44,7 @@ function seemore (rootnode) {
     console.log('Adding the red border to ', buttons.length, 'w/ content:', _.map(buttons, 'textContent'));
 
     _.each(buttons, function (b) {
-        b.style = 'border: red 3px solid; border-radius: 3px';
+        b.style = 'border: red 2px solid; border-radius: 5px';
         b.addEventListener('mouseout', runPageAnalysis);
     });
     return buttons;

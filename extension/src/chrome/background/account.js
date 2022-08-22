@@ -11,13 +11,13 @@ const FIXED_USER_NAME = 'librevent';
 
 bo.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.type === 'localLookup') {
-        userLookup( request.payload ? request.payload : { userId: FIXED_USER_NAME }, sendResponse);
+        userLookup(request.payload ? request.payload : { userId: FIXED_USER_NAME }, sendResponse);
     } else if (request.type === 'remoteLookup') {
         serverLookup(request.payload, sendResponse);
     } else if (request.type === 'ConfigUpdate') {
         configUpdate(request.payload, sendResponse);
     } else {
-        console.warn(`Warning: Request type unhandled ${request.type}, part of ${request}, from ${sender}`);
+        console.warn(`Warning: Request type unhandled ${request.type}, part of ${JSON.stringify(request)}, from ${JSON.stringify(sender)}`);
     }
     return true;
 });
@@ -37,12 +37,12 @@ const DEFAULT_SETTINGS = {
     ux: false,
     backend: 'https://libr.events',
     login: 'dummy',
-    password: undefined,
+    password: '',
     moblizon: 'https://mobilizon.libr.events',
 };
 
 function setDefaults(val) {
-    console.log("Setting the defaults! but we got", val);
+    console.log('Setting the defaults! but we got', val);
     val = { ...DEFAULT_SETTINGS, ...val };
     return val;
 }
@@ -51,10 +51,10 @@ function userLookup ({ userId }, sendResponse) {
 
     db.get(userId).then(val => {
         if (isEmpty(val)) {
-            var val = initializeKey();
-            val = setDefaults(val);
+            const newk = initializeKey();
+            val = setDefaults(newk);
             db.set(userId, val).then(val => {
-                console.log("First access attempted, created config", val);
+                console.log('First access attempted, created config', val);
                 sendResponse(val);
             });
         } else {
