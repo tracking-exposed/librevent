@@ -113,11 +113,40 @@ function investigate (rootnode) {
         return retval;
     }));
 
+    description(document.querySelector('body'));
     console.log('Sorted', _.sortBy(analysis, 'order'));
     return analysis;
 }
 
- function stringToHash (string) {
+function description (node) {
+    /* by analysis the second element h2 is 'details' so we can get above
+     * the parentNodes till we found the actual description box 
+        0 H2, 210
+        Details
+        1 DIV, 292
+        Details
+        2 DIV, 329
+        Details
+        3 DIV, 384
+        Details
+        4 DIV, 12466
+    ************************************* */
+    const h2 = node.querySelectorAll('h2');
+    console.log(`elements h2 should be > 3 and they are: ${h2 ? h2.length : 0}`);
+    if(!h2 || !h2.length) {
+        return { description: false };
+    }
+    const rightn = _.reduce(_.times(7), function(memo, testNumber) {
+        if(memo.parentNode) {
+            console.log(`${testNumber} ${memo.tagName}, ${memo.innerHTML.length}`);
+            console.log(memo.textContent);
+            return memo.parentNode;
+        }
+    }, h2[1]);
+
+}
+
+function stringToHash (string) {
     if (!string.length) {
         return hash;
     }
@@ -145,5 +174,6 @@ function looks (rootnode, selector, feat, match) {
 module.exports = {
     investigate,
     stringToHash,
+    description,
     seemore,
 };
