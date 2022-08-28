@@ -6,7 +6,7 @@ import config from './config';
 import hub from './hub';
 import { registerHandlers } from './handlers/index';
 import { mineEvent } from './parser';
-import { investigate, seemore } from './hasher';
+import { investigate, seemore, description } from './hasher';
 
 // bo is the browser object, in chrome is named 'chrome', in firefox is 'browser'
 const bo = chrome || browser;
@@ -279,22 +279,28 @@ function sendEvent () {
   const elem = document.querySelector(FB_PAGE_SELECTOR);
   if (!elem) return;
 
-  let investiresult = null;
+  try {
+    const metadata = mineEvent(elem);
+    console.log('Event spotted and mined successfully', metadata);
+  } catch (error) {
+    console.log(`Error in mineEvent: ${error.message} but doesn't matter`);
+  }
+
+  const x = description(elem);
   try {
     const buttons = seemore(elem);
 
     if (!buttons) currentPhase = 'second';
 
-    investiresult = investigate(elem);
+    const investiresult = investigate(elem);
     if (investiresult.length) {
       shiftPhase({first: true, second: true, third: false });
     }
 
-    const metadata = mineEvent(elem);
-    console.log('Event spotted and mined successfully', metadata);
+    const textnest = description(elem);
 
     hub.event('newContent', {
-      metadata,
+      textnest,
       details: _.map(investiresult, (i) => _.omit(i, ['node'])),
       element: elem.outerHTML,
       href: window.location.href,

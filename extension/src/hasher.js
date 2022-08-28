@@ -113,7 +113,6 @@ function investigate (rootnode) {
         return retval;
     }));
 
-    description(document.querySelector('body'));
     console.log('Sorted', _.sortBy(analysis, 'order'));
     return analysis;
 }
@@ -132,18 +131,64 @@ function description (node) {
         4 DIV, 12466
     ************************************* */
     const h2 = node.querySelectorAll('h2');
-    console.log(`elements h2 should be > 3 and they are: ${h2 ? h2.length : 0}`);
-    if(!h2 || !h2.length) {
-        return { description: false };
-    }
-    const rightn = _.reduce(_.times(7), function(memo, testNumber) {
-        if(memo.parentNode) {
-            console.log(`${testNumber} ${memo.tagName}, ${memo.innerHTML.length}`);
-            console.log(memo.textContent);
-            return memo.parentNode;
-        }
-    }, h2[1]);
+    console.log(`Description recursive search (h2 should be > 3 and they are: ${h2 ? h2.length : 0})`);
+    if(!h2 || !h2.length)
+        return false;
 
+    if(h2.length < 2) {
+        console.log("assumption fail! investigate")
+        return false;
+    }
+
+    const selection = _.reduce(_.times(7), function(memo, testNumber) {
+        if(memo.node.innerHTML.length > 1000 && memo.correct === null) {
+            memo.correct = memo.node;
+            // console.log(`Keeping: ${testNumber} ${memo.node.tagName}, ${memo.node.innerHTML.length}`);
+        }
+        memo.node = memo.node.parentNode;
+        return memo;
+    }, { node: h2[1], correct: null });
+
+    if(!selection.correct) {
+        console.log("Recursion n.1 fail!");
+        return false;
+    }
+
+    selection.correct.style = 'border: 2px yellow solid';
+    console.log(`Found: ${selection.correct.textContent}`);
+    const retstruct = recursiveTextContent(selection.correct);
+    console.log(JSON.stringify(retstruct, null ,2));
+    return retstruct;
+}
+
+function recursiveTextContent(rnode) {
+    const retval = {};
+    const rect = (typeof rnode.getBoundingClientRect === 'function') ? rnode.getBoundingClientRect() : null;
+
+    if(rnode.tagName === 'A') {
+
+        retval.text = rnode.textContent;
+        retval.href = rnode.getAttribute('href');
+        // retval.tagName = rnode.tagName; // rethorical tagName
+        if(rect !== null)
+            retval.rect = rect;
+
+    } else if(rnode.nodeType === Node.TEXT_NODE) {
+        const text = rnode.nodeValue.trim();
+        if(text && text.length) {
+
+            retval.text = text;
+            retval.tagName = rnode.tagName;
+            if(rect !== null)
+                retval.rect = rect;
+
+        }
+    }
+
+    const recursive = rnode.childNodes.length ?
+        _.map(rnode.childNodes, recursiveTextContent): [];
+
+    return _.concat(retval, recursive);
 }
 
 function stringToHash (string) {

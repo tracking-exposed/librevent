@@ -36,9 +36,9 @@ const DEFAULT_SETTINGS = {
     active: true,
     ux: false,
     backend: 'https://libr.events',
-    login: 'dummy',
-    password: '',
-    moblizon: 'https://mobilizon.libr.events',
+    login: 'experiment',
+    password: 'experiment',
+    mobilizon: 'https://mobilizon.libr.events',
 };
 
 function setDefaults(val) {
