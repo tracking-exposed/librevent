@@ -4,7 +4,7 @@ const server = require('http').Server(app);
 const _ = require('lodash');
 const moment = require('moment');
 const bodyParser = require('body-parser');
-const debug = require('debug')('quintrex:collector');
+const debug = require('debug')('librevent:server');
 const nconf = require('nconf');
 const cors = require('cors');
 

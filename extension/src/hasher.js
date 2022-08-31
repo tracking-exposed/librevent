@@ -157,7 +157,7 @@ function description (node) {
     selection.correct.style = 'border: 2px yellow solid';
     console.log(`Found: ${selection.correct.textContent}`);
     const retstruct = recursiveTextContent(selection.correct);
-    console.log(JSON.stringify(retstruct, null ,2));
+    console.log(JSON.stringify(retstruct, null, 2));
     return retstruct;
 }
 

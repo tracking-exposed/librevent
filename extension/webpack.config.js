@@ -83,8 +83,9 @@ const DEV_PLUGINS = [
         urgency: 'critical',
         title: 'librevent',
         contentImage: path.join(__dirname, 'icons', 'librevent-128.png'),
-        timeout: 2,
-        alwaysNotify: true
+        timeout: 1,
+        alwaysNotify: false,
+        skipFirstNotification: true,
     })
 ];
 
