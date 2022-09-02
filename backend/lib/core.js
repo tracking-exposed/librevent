@@ -50,15 +50,15 @@ async function flushEvents(mined, supporter, config) {
     const eventvars = {
         start: new Date(), // the object need to have a valid .toISOString() method
         end: new Date(),   // this can be null, and
-        title: "Event title!",
-        description: "A description that should also contains\n\nnewlines",
+        title: mined.title,
+        description: mined.description,
         url: "https://your.event.promotion.or.anything.else",
         address: "Berlin, Cocolo Ramen", // A string that would be queried soon!
     };
-    /* this is the userId that should be used */
+
+    /* this is the internal userId used by mobi */
     eventvars.organizerActorId = userInfo[0].id;
     eventvars.token = token;
-    eventvars.description = mined.description;
 
     debugger;
     try {
@@ -74,11 +74,10 @@ async function flushEvents(mined, supporter, config) {
         throw error;
     }
 
-    debugger;
     let results = null;
     try {
         results = await mobi.createEvent.postToMobilizon(eventvars);
-        debug(results);
+        debug("createEvent result is %j", results);
     } catch(error) {
         debug("Failure in createEvent call: %s", error.message);
         throw error;

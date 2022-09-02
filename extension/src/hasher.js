@@ -117,6 +117,16 @@ function investigate (rootnode) {
     return analysis;
 }
 
+function title (node) {
+    const h2 = node.querySelectorAll('h2');
+    if(!h2 || !h2.length) {
+        console.log('Not possible find a title?'); return;
+    }
+    const title = h2[0].textContent;
+    console.log(`Found title: [${title}]`);
+    return title;
+}
+
 function description (node) {
     /* by analysis the second element h2 is 'details' so we can get above
      * the parentNodes till we found the actual description box 
@@ -219,6 +229,7 @@ function looks (rootnode, selector, feat, match) {
 module.exports = {
     investigate,
     stringToHash,
+    title,
     description,
     seemore,
 };

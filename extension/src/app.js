@@ -6,7 +6,7 @@ import config from './config';
 import hub from './hub';
 import { registerHandlers } from './handlers/index';
 import { mineEvent } from './parser';
-import { investigate, seemore, description } from './hasher';
+import { investigate, title, seemore, description } from './hasher';
 
 // bo is the browser object, in chrome is named 'chrome', in firefox is 'browser'
 const bo = chrome || browser;
@@ -286,7 +286,6 @@ function sendEvent () {
     console.log(`Error in mineEvent: ${error.message} but doesn't matter`);
   }
 
-  const x = description(elem);
   try {
     const buttons = seemore(elem);
 
@@ -298,9 +297,11 @@ function sendEvent () {
     }
 
     const textnest = description(elem);
+    const pickedTitle = title(elem);
 
     hub.event('newContent', {
       textnest,
+      title: pickedTitle,
       details: _.map(investiresult, (i) => _.omit(i, ['node'])),
       element: elem.outerHTML,
       href: window.location.href,

@@ -35,8 +35,11 @@ function recursiveReassembly(objtree) {
     }
 
     function handleText(texto) {
-        if(stillIgnore && texto.text === ignoreUntil)
+        if(stillIgnore && texto.text === ignoreUntil) {
             stillIgnore = false;
+            // because otherwise we add 'ignoreUntil' in text 
+            return;
+        }
 
         if(stillIgnore)
             return;
@@ -79,19 +82,19 @@ function processMINED(supporter, received) {
         'details',  // information mined in the extension, the blocks with RED border
         'element',  // html block of the event, not parsed
         'clientTime',
+        'title',
         'textnest', // nested block of texts, from the block in YELLOW border
         'href',     // facebook event URL
         'update'    // this is an incremental number in the case the same page in the browser has been sent more than once
     ]);
     mined.id = id;
     // the two dates should not be String but Date
+    console.log(mined.clientTime, typeof mined.clientTime);
     mined.clientTime = new Date(mined.clientTime);
     mined.savingTime = new Date();
 
-    const htmlrebuilt = recursiveReassembly(mined.textnest);
     // mobilizone supports HTML too!
-    mined.description = htmlrebuilt;
-
+    mined.description = recursiveReassembly(mined.textnest);
     return mined;
 }
 
@@ -190,11 +193,9 @@ async function processEvents(req) {
 
     const config = req.body[0].settings;
 
-    /* in this case every submission contains only one element */
-    const source = _.first(req.body);
-
-    /* this function, implemented above, produce an object ready for DB saving */
-    const mined = processMINED(source, supporter);
+    /* in this case every submission contains only one element,
+     * this function, implemented above, produce an object ready for DB saving */
+    const mined = processMINED(supporter, _.first(req.body) );
     /* supporter and config are in two different collections, both handled in 'core', 
      * where the authentication token of mobilizon is fetched */
 
