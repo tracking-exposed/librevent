@@ -17,7 +17,7 @@ bo.runtime.onMessage.addListener((request, sender, sendResponse) => {
     } else if (request.type === 'ConfigUpdate') {
         configUpdate(request.payload, sendResponse);
     } else {
-        console.warn(`Warning: Request type unhandled ${request.type}, part of ${JSON.stringify(request)}, from ${JSON.stringify(sender)}`);
+        console.log(`Note: Ignored message with type ${request.type}, part of this request payload: ${JSON.stringify(request)}`);
     }
     return true;
 });
@@ -36,19 +36,22 @@ const DEFAULT_SETTINGS = {
     active: true,
     ux: false,
     backend: 'https://libr.events',
-    login: 'experiment',
+// if you scan github to look for credential, don't bother yourself,
+// this experiment account / node are not worthy your time!
+    login: 'mobilibr@mt2015.com',
     password: 'experiment',
-    mobilizon: 'https://mobilizon.libr.events',
+    mobilizon: 'https://mobilizon.libr.events/api',
+// if you scan github to look for credential, don't bother yourself,
+// this experiment account / node are not worthy your time!
 };
 
 function setDefaults(val) {
-    console.log('Setting the defaults! but we got', val);
-    val = { ...DEFAULT_SETTINGS, ...val };
+    console.log(`Setting the defaults: ${DEFAULT_SETTINGS} + ${val}`);
+    val = { ...DEFAULT_SETTINGS, ...val }
     return val;
 }
 
 function userLookup ({ userId }, sendResponse) {
-
     db.get(userId).then(val => {
         if (isEmpty(val)) {
             const newk = initializeKey();
@@ -65,8 +68,8 @@ function userLookup ({ userId }, sendResponse) {
 };
 
 function serverLookup (payload, sendResponse) {
-
-    /* remoteLookup might be call as first function after the extension has been
+    /* remoteLookup is currently not in use and was written some ages ago.
+     * might be call as first function after the extension has been
      * installed, and the keys not be yet instanciated */
     const userId = FIXED_USER_NAME;
     db.get(userId).then(val => {
@@ -87,7 +90,7 @@ function serverLookup (payload, sendResponse) {
 };
 
 function configUpdate (payload, sendResponse) {
-
+    console.log(`Upgrading configuration with ${JSON.stringify(payload)}`);
     const userId = FIXED_USER_NAME;
     db.get(userId).then(val => {
         return db.set(userId, {...val, ...payload });

@@ -128,7 +128,7 @@ function hrefUpdateMonitor () {
   // continue the step, if new, clean cache
   if (diff) {
     cleanCache();
-    randomUUID = getRandomBlock().substring(28);
+    randomUUID = getRandomBlock().substring(0, 28);
   }
 
   if (!meaningfulCachedDifference(elem)) {
@@ -304,10 +304,9 @@ function sendEvent () {
       details: _.map(investiresult, (i) => _.omit(i, ['node'])),
       element: elem.outerHTML,
       href: window.location.href,
-      when: Date(),
       update: cacheSize.sentTimes,
       randomUUID,
-      settings: _.pick(currentConfig, ['mobilizon', 'username', 'password', 'backend']),
+      settings: _.pick(currentConfig, ['mobilizon', 'login', 'password', 'backend']),
     });
     return true;
   } catch (error) {

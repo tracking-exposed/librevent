@@ -8,19 +8,89 @@ const mongo = require('./mongo');
 const utils = require('./utils');
 const CSV = require('./CSV');
 
-const GUARDONI_MAX_URLS = 20;
+/* note, a few functions in this file are outdated and should be deleted,
+ + a discrete knowledge of lodash would help you for good */
+
+
+function recursiveReassembly(objtree) {
+    /* this object is specular to the text fetched 
+     * from the source, it is initially produced in
+     * extension/src/hasher.js file recursiveLinksDigging */
+   
+    /* this is the return variable, it accumulates piece of HTML */
+    let htmlacc = "";
+    /* if you dump the content of objtree with console.log 
+     * you might see there are a lot of text we don't need,
+     * this boolean 'stillIgnore' is true till the string: */
+    const ignoreUntil = "Anyone on or off Facebook";
+    let stillIgnore = true;
+
+    /* this function need to exclude the pieces of text 
+     * that we don't need */
+    function handleHref(ahrefo) {
+        if(stillIgnore)
+            return;
+        
+        htmlacc += `<a target=_blank href="${ahrefo.href}">${ahrefo.text}</a>`;
+    }
+
+    function handleText(texto) {
+        if(stillIgnore && texto.text === ignoreUntil)
+            stillIgnore = false;
+
+        if(stillIgnore)
+            return;
+
+        htmlacc += `<p dir="auto">${texto.text}</p>`;
+    }
+
+    /* this function do recursion and understand if 
+     * is dealing with text, links, or objects */
+    function objectDigging(obj) {
+        if(obj instanceof Object) {
+            /* objects might be { text: "blah" }, or
+             * { href: "...", text: "blah" } so we check
+             * before the href to handle the link differently */
+            if(obj.href)
+                handleHref(obj);
+            else if(obj.text)
+                handleText(obj);
+        }
+        if(obj instanceof Array) {
+            _.each(obj, objectDigging);
+        }
+    }
+
+    _.each(objtree, objectDigging);
+
+    return htmlacc;
+}
 
 function processMINED(supporter, received) {
 
-    const id = utils.hash({href: received.href,
+    const id = utils.hash({
+        href: received.href,
         size: received.size,
         publicKey: supporter.publicKey,
         randomUUID: received.randomUUID,
     });
 
-    const mined = {
-        id,
-    }
+    const mined = _.pick(received, [
+        'details',  // information mined in the extension, the blocks with RED border
+        'element',  // html block of the event, not parsed
+        'clientTime',
+        'textnest', // nested block of texts, from the block in YELLOW border
+        'href',     // facebook event URL
+        'update'    // this is an incremental number in the case the same page in the browser has been sent more than once
+    ]);
+    mined.id = id;
+    // the two dates should not be String but Date
+    mined.clientTime = new Date(mined.clientTime);
+    mined.savingTime = new Date();
+
+    const htmlrebuilt = recursiveReassembly(mined.textnest);
+    // mobilizone supports HTML too!
+    mined.description = htmlrebuilt;
 
     return mined;
 }
@@ -43,7 +113,7 @@ function processHTMLs(supporter, received) {
         update: received.update,
         publicKey: supporter.publicKey,
         clientTime: new Date(received.clientTime),
-        savingTime: new Date(moment().toISOString()),
+        savingTime: new Date(),
     };
     return evelif;
 }
@@ -113,21 +183,21 @@ async function processEvents(req) {
         moment(supporter.lastActivity).format("HH:mm DD/MM"),
         moment.duration(moment.utc()-moment(supporter.lastActivity)).humanize() );
 
-    console.log("uwu", _.size(req.body), _.keys(req.body[0]),
-        JSON.stringify(
-            _.omit(req.body[0], ['element']),
-            undefined, 2)
-    );
     const enrichedF = _.partial(processHTMLs, supporter);
     const htmls = _.map(req.body, enrichedF);
     const results = await mongo
         .insertMany(mongoc, nconf.get('schema').htmls, htmls);
 
-    const config = req.body[0].config;
+    const config = req.body[0].settings;
 
-    const mined = _.map(req.body, _.partial(processMINED, supporter));
+    /* in this case every submission contains only one element */
+    const source = _.first(req.body);
+
+    /* this function, implemented above, produce an object ready for DB saving */
+    const mined = processMINED(source, supporter);
     /* supporter and config are in two different collections, both handled in 'core', 
      * where the authentication token of mobilizon is fetched */
+
     const flushdetails = await core.flushEvents(mined, supporter, config)
 
     const upres = await mongo
@@ -278,13 +348,6 @@ function crono(metadatas) {
     rebuilt[0] = [counters, counters2];
     return rebuilt;
 }
-function guardoni(metadatas) {
-    // from a nested list of lists, flatten, keep only the most recent 20 unique URL to feed automatation
-    // in the future this should keep in account to return only events that are not yet scraped.
-    const maxlist = _.flatten(metadatas);
-    const uniquified = _.uniqBy(maxlist, 'urlId');
-    return _.slice(_.reverse(_.sortBy(uniquified, 'savingTime')), 0, GUARDONI_MAX_URLS);
-}
 
 const supportedTransformations = {
     'post': { filter: { 'nature.fblinktype': 'post'},
@@ -338,6 +401,7 @@ async function commonalDataViaSubject(req) {
 module.exports = {
     processEvents,
     returnEvent,
+    recursiveReassembly,
     personalCSVbySubject,
     commonalDataViaSubject,
 };

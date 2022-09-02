@@ -1,10 +1,10 @@
 {
   "name": "librevent-extension",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Librevent is an extension that helps Fediverse users in republishing events otherwise available only on walled-garden social network",
   "homepage": "https://libr.events",
   "license": "AGPL-3.0",
-  "author": "Claudio Agosti mostly but really this should become a team effort",
+  "author": "Claudio Agosti mostly, but really this should become a team effort: reach out!",
   "scripts": {
     "build": "rm -rf ./build && mkdir build && cross-env webpack && cp -r src/popup/* manifest.json icons/* ./build/",
     "build:dist": "sh pack-extension.sh",
