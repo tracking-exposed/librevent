@@ -1,4 +1,15 @@
-cd automation; npm install; cd ..
-cd backend; npm install; cd ..
-cd extension; npm install; npm run build:dist; cd ..
-echo "Librevent is ready, not please follow https://libre.events/mobilizon-poster/"
+# Install various NPM dependencies...
+
+cd backend
+
+npm install; cd ..
+
+cd extension
+
+npm install --legacy-peer-deps
+npm run build
+
+cd ../
+
+echo -e "\nLibrevent is ready. Please follow"
+echo -e "\thttps://libre.events/mobilizon-poster/"
