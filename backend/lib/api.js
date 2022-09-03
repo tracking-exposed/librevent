@@ -93,6 +93,9 @@ function processMINED(supporter, received) {
     mined.clientTime = new Date(mined.clientTime);
     mined.savingTime = new Date();
 
+    // fundamental to keep track of the data liberator
+    mined.publicKey = supporter.publicKey;
+
     // mobilizone supports HTML too!
     mined.description = recursiveReassembly(mined.textnest);
     return mined;
@@ -199,22 +202,36 @@ async function processEvents(req) {
     /* supporter and config are in two different collections, both handled in 'core', 
      * where the authentication token of mobilizon is fetched */
 
-    const flushdetails = await core.flushEvents(mined, supporter, config)
+    const mobiposted = await core.flushEvents(mined, supporter, config)
 
+    if(mobiposted['__typename'] === 'Event')
+        mined.posted = mobiposted;
+    else
+        mined.failure = mobiposted;
+
+    _.set(supporter, 'lastActivity', new Date());
+    /* save in supporter collection the most recent settings used */
+    supporter.config = config;
+    console.log(supporter);
     const upres = await mongo
         .updateOne(mongoc, nconf.get('schema').supporters, { publicKey: supporter.publicKey}, supporter);
 
+    // TODO remind the `posted` collection has not index nor yet clear structure
+    const mobi = await mongo.writeOne(mongoc, nconf.get('schema').posted, mined);
+
     const conclusion = moment();
-
-    _.set(supporter, 'lastActivity', new Date());
-    debug("Written %d htmls, and %d mined events for supporter %s, took %s",
-        _.size(htmls), _.size(mined), upres.pseudo, moment.duration(conclusion - beginning).humanize());
-
     await mongoc.close();
+
+    debug("Written %d htmls, event post [%s] (%s) supporter %s, took %s",
+        _.size(htmls),
+        mined?.posted?.url ? "SUCESSFUL" : "FAILURE",
+        mined?.posted?.url ? mined.posted.url : JSON.stringify(mined.failure),
+        supporter.pseudo,
+        moment.duration(conclusion - beginning).humanize());
+
     return { "json": {
-        "status": "OK",
-        upres,
-        flushdetails,
+        status: mined?.posted?.url ? "OK" : "error",
+        mobiposted,
         seconds: moment.duration(conclusion - beginning).asSeconds(),
     }};
 };
@@ -232,177 +249,43 @@ async function returnEvent(req) {
     return { json: ready };
 };
 
-async function produceJSON(pk, subject) {
-    // this function might have publicKey (when invoked by personal API) or
-    // might ask for every data (if queried by public API)
-    const filter = pk ? _.extend(supportedTransformations[subject].filter, { publicKey: pk }) : supportedTransformations[subject].filter;
-    debug("produceJSON %s -> filter %j", subject, filter);
-    const MAXSIZE = 2000;
+async function personalContribs(req) {
+    // personal Contribution, is the API accessed only via knowledge of the personal 
+    // secret (which technical is a publicKey so a better authentication mechanism can be 
+    // implemented, for example what has been done in fbtrex and/or a challenge-response mechanism
+
+    // this API returns the `supporter` entry with the `supporter.config` settings,
+    // and returns also the list of the last 100 liberated events. this is an arbitrary 
+    // number and pagination isn't yet implemented. 
+
+    const publicKey = req.params.publicKey;
+    debug("Requested personalContribs by %s", publicKey);
+
     const mongoc = await mongo.clientConnect();
-    const data = await mongo.readLimit(mongoc, nconf.get('schema').metadata, filter, { savingTime: -1}, MAXSIZE, 0);
+    const posted = await mongo.readLimit(mongoc, nconf.get('schema').posted, {
+       publicKey 
+    }, { savingTime: -1}, 100, 0);
+    const supporter = await mongo.readOne(mongoc, nconf.get('schema').supporters, {publicKey})
+
+    debug("Fetched %d posted events for %s", _.size(posted), supporter.pseudo);
     await mongoc.close();
-
-    if(_.size(data) == MAXSIZE)
-        debug("Fetched MAX %d data, for %s, overflow!", _.size(data), subject);
-    else
-        debug("Fetched %d event(s) for %s", _.size(data), subject);
-
-    /* functions from 'supported' executed here, a pipeline that transform metadata */
-    const pipeline = supportedTransformations[subject].reduction.split(',');
-    const clean = _.reduce(data, function(memo, entry) {
-        let swapper = entry;
-        _.each(pipeline, function(fname) {
-            swapper = eval(fname)(swapper);
-        })
-        memo.push(swapper);
-        return memo;
-    }, []);
-
-
-    /* in the case you want to apply a trasformation on the whole dataset, the 'final' function to it */
-    if(supportedTransformations[subject].final) {
-        const fname = supportedTransformations[subject].final;
-        const retval = eval(fname)(clean);
-        debug("Executed final function, from %d to %d entries", _.size(clean), _.size(retval));
-        return retval;
-    }
-
-    /* standard cleaning if NO more specialized reconstruction (the .final above) hasn't happen */
-    const omitFields = _.concat(['_id', 'when', 'update', 'textChains', 'hrefChains', 'imageChains',
-        'preview', 'post', 'meaningfulId', 'attributions', 'nature'], ['urlo', 'parsed', 'messages']);
-    /* the second chunks (urlo, parsed..) comes from 'nature' object */
-    return _.map(clean, function(metadata) { return _.omit(metadata, omitFields) });
-}
-
-async function produceCSV(pk, subject) {
-
-    const data = await produceJSON(pk, subject);
-    debug("produceJSON: %s")
-    const filename = `${subject}-${_.size(data)}-${moment().format("YYYY-MM-DD")}.csv`;
-    const csv = CSV.produceCSVv1(data);
-    /* this is for collector.js and then for express4 */
-    return {
+    return { 
         headers: {
-            "Content-Type": "csv/text",
-            "Content-Disposition": "attachment; filename=" + filename
+            'Access-Control-Allow-Origin': '*'
         },
-        text: csv,
-    };
-}
-
-/* -- THIS IS HOW A RAW METADATA LOOKS LIKE.
-
-_id	id	linktype	href	update	publicKey	savingTime	when	nature	
-textChains	hrefChains	imageChains	preview	post	meaningfulId	attributions 
-
-    -- functions below should also become a library and become a batch script        */
-
-// REDUCION transformations they works on an individual data unit
-function standard(metadata) {
-    return _.merge(metadata, metadata.nature);
-}
-function summaryOnlyCSV(metadata) {
-    return metadata;
-}
-function mineEventsFromPreview(metadata) {
-
-    if(!metadata.meaningfulId) return [];
-    const valuables = _.compact(_.map(metadata.meaningfulId.hrefs, function(eventobj) {
-        const isanEvent = eventobj.fblinktype ==='event' &&
-            eventobj.eventId &&
-            eventobj.eventId.match(/(\d+)/);
-        if(!isanEvent)
-            return false;
-
-        eventobj.href = `https://www.facebook.com/events/${eventobj.eventId}`;
-        eventobj.title = eventobj.text;
-        eventobj.savingTime = new Date(metadata.savingTime);
-        eventobj.timeago = moment.duration(moment() - moment(metadata.savingTime)).humanize();
-        return eventobj;
-    }));
-
-    return _.map(valuables, function(entry) {
-        return _.pick(entry, ['title', 'urlId', 'savingTime', 'href', 'timeago']);
-    });
-}
-function eventInfo(metadata) {
-    try {
-        const images = _.filter(metadata.imageChains.images, function(entry) {
-            return entry.src.match(/.*(\d+)_(\d+)_(\d+)_n\.jpg\?.*/);
-        });
-        metadata.images = _.map(images, 'src');
-        // debug("Found %d meaningful images %j", _.size(images), metadata.images);
-        metadata.title = metadata.textChains.h2[2];
-        metadata.eventDateString = metadata.textChains.h2[1];
-        metadata.description = metadata.textChains.topdiv.join(' ');
-    } catch(error) {
-        debug("Error in eventInfo pipeline function: %s", error.message);
-    }
-    return metadata;
-}
-// FINAL transformation (they works on the entire dataset)
-function crono(metadatas) { 
-    const rebuilt = [];
-    const counters = _.countBy(metadatas, 'fblinktype');
-    const counters2 = _.countBy(metadatas, 'linktype');
-    debug(counters, counters2);
-    rebuilt[0] = [counters, counters2];
-    return rebuilt;
-}
-
-const supportedTransformations = {
-    'post': { filter: { 'nature.fblinktype': 'post'},
-        reduction: 'standard'
-    },
-    'profile': { filter: { 'nature.fblinktype': 'profile'},
-        reduction: 'standard'
-    },
-    'crono': { filter: {},
-        reduction: 'standard,summaryOnlyCSV',
-        final: 'crono'
-    },
-    'events': { filter: { 'linktype': 'event'},   // uniform linktype and nature.fblinktype?
-        reduction: 'standard,eventInfo'
-    },
-    'previews': { filter: { 'linktype': 'previews'},
-        reduction: 'mineEventsFromPreview',
-        final: 'guardoni'
-    }
-};
-
-async function personalCSVbySubject(req) {
-    // personal CSV by :subject
-    debug("Requested personalCSV by Subject %s", req.params.subject);
-    if(req.params.subject == 'crono' || req.params.subject == 'home')
-        return await produceCSV(req.params.publicKey, 'crono');
-
-    if(_.keys(supportedTransformations).indexOf(req.params.subject) == -1)
-        return { text: `Invalid subject requested, currently supported ${JSON.stringify(_.keys(supportedTransformations))}`}
-
-    // check if the requested format it is effectively CSV
-    if(req.params.format === 'csv')
-        return await produceCSV(req.params.publicKey, req.params.subject);
-    else
-        return await produceJSON(req.params.publicKey, req.params.subject);
+        json: { posted, supporter }};
 }
 
 async function commonalDataViaSubject(req) {
-    // this function is like personal but do not add publicKey filter and it is mean for 
-    // public diffusione of data: personal identified MUST be redacted/pseudonymized
-    debug("Requested commonal data (subject %s, format %s", req.params.subject, req.params.format);
-    if(req.params.subject == 'previews') {
-        // the 'previews' already destroy personal data as it use 'guardoni' as final TRANSFORMATION
-        content = await produceJSON(null, req.params.subject);
-        return { json: content };
-    }
-
-    return { text: 'Only supported variables: /api/v2/common/previews/guardoni'};
+    // this function is meant for public diffusion of reposted events 
+    // of course any personal identified MUST be redacted/pseudonymized
+    return { text: 'Not supported antymore' };
 }
 
 module.exports = {
     processEvents,
     returnEvent,
     recursiveReassembly,
-    personalCSVbySubject,
+    personalContribs,
     commonalDataViaSubject,
 };

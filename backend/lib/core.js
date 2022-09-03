@@ -77,7 +77,8 @@ async function flushEvents(mined, supporter, config) {
     let results = null;
     try {
         results = await mobi.createEvent.postToMobilizon(eventvars);
-        debug("createEvent result is %j", results);
+        debug("createEvent result is %d byte logn!", JSON.stringify(results).length);
+        return results;
     } catch(error) {
         debug("Failure in createEvent call: %s", error.message);
         throw error;

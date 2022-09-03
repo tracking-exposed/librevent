@@ -28,7 +28,7 @@ async function wrapRoutes(what, req, res) {
     else if(what == 'output')
         return await api.returnEvent(req, res);
     else if(what == 'personal')
-        return await api.personalCSVbySubject(req, res);
+        return await api.personalContribs(req, res);
     else if(what == 'common')
         return await api.commonalDataViaSubject(req, res);
     else
@@ -86,8 +86,8 @@ app.get('/api/v2/events/:eventId', cors(), async function(req, res) {
     };
 });
 
-app.options('/api/v2/personal/:publiKey/:subject/:format', cors());
-app.get('/api/v2/personal/:publicKey/:subject/:format', cors(), async function(req, res) {
+app.options('/api/v2/personal/:publiKey', cors());
+app.get('/api/v2/personal/:publicKey', cors(), async function(req, res) {
     try {
         await iowrapper('personal', req, res);
     } catch(error) {
