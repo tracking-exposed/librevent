@@ -1,15 +1,21 @@
-# Install various NPM dependencies...
+#!/bin/sh 
 
-cd backend
+# Install various NPM dependencies: as long as there is an old 
+# version of webpack, we should keep the --legacy-peer-deps :\
 
-npm install; cd ..
+cd extension; npm install --legacy-peer-deps; npm run build; cd ..
 
-cd extension
+if [ ! -e extension/build/app.js ]; then
+   echo "Extension build has failed!"
+   exit
+fi
 
-npm install --legacy-peer-deps
-npm run build
+echo "Configuring backend..."
+cd backend; npm install; 
 
-cd ../
+echo "Now you should execute:"
+echo "npm run watch"
+echo "and load in your browser as developer mode, the extension from './extension/build' folder"
+echo "know more at https://libr.events/development"
 
-echo -e "\nLibrevent is ready. Please follow"
-echo -e "\thttps://libre.events/mobilizon-poster/"
+
