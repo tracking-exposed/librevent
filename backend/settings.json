@@ -12,5 +12,5 @@
   "mongoPort": "27017",
   "mongoDb": "librevent",
   "port": 13000,
-  "interface": "127.0.0.1"
+  "interface": "0.0.0.0"
 }
