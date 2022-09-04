@@ -12,5 +12,5 @@ cd backend; npm install;
 
 echo "Now you should execute:"
 echo "npm run watch"
-echo "and load in your browser as developer mode, the extension from ../extension/build folder"
+echo "and load in your browser as developer mode, the extension from './extension/build' folder"
 echo "know more at https://libre.events/development"
