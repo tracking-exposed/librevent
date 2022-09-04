@@ -1,3 +1,13 @@
+## This directory have been **DISCONTINUED**
+
+_and soon would be removed!_
+
+It has worked well for a few months, but since version 0.3 we moved on a different design.
+
+If you're curious on how this was working, please checkout this video produced by Mobilize.Berlin: [https://vimeo.com/744976039](https://vimeo.com/744976039).
+
+---
+
 Tools and commands for automated librevent 
 
 1. [Install nodejs in your system](https://nodejs.org/en/download://nodejs.org/en/download/)

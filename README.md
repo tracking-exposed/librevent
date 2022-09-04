@@ -1,10 +1,12 @@
 # Librevent 
 
-This project is build as part of [quickened interoperability](https://quickened.interoperability.tracking.exposed), which is a complex plan that include this software, in conjunction with [mobilizon](https://joinmobilizon.org). 
+This project is better explain at the website [libr.events](https://libr.events), which is a complex plan that include this software, in conjunction with [mobilizon](https://joinmobilizon.org); A package developed for the same purpose is [mobilizon-poster](https://github.com/vecna/mobilizon-poster).
 
 ## Getting ready
 
-    sh ./buildall.sh
+```
+sh ./buildall.sh
+```
 
 ### What's interoperability ? 
 
@@ -19,4 +21,5 @@ Critical mass is the reason why Facebook remain dominan despite none of their re
 ## By liberating events from Facebook to Fediverse we might help migration on federated platform.
 
 And that's all we're testing here! If you want to get more grasp of the actual impact (May 2021) please check out [mobilize.berlin](https://mobilize.berlin).
+
 
