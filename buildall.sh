@@ -1,4 +1,16 @@
-cd automation; npm install; cd ..
-cd backend; npm install; cd ..
-cd extension; npm install; npm run build:dist; cd .. # may need to use --legacy-peer-deps for old webpack version
-echo "Librevent is ready, not please follow https://libre.events/mobilizon-poster/"
+#!/bin/sh 
+
+cd extension; npm install --legacy-peer-deps; npm run build; cd ..
+
+if [ ! -e extension/build/app.js ]; then
+   echo "Extension build has failed!"
+   exit
+fi
+
+echo "Configuring backend..."
+cd backend; npm install; 
+
+echo "Now you should execute:"
+echo "npm run watch"
+echo "and load in your browser as developer mode, the extension from ../extension/build folder"
+echo "know more at https://libre.events/development"
