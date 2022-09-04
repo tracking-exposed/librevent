@@ -37,7 +37,13 @@ const hashmap = [
 ];
 
 function seemore (rootnode) {
-    const buttons = looks(rootnode, '[role="button"]', 'textContent', 'See more');
+    // try english
+    let buttons = looks(rootnode, '[role="button"]', 'textContent', 'See more');
+
+    // try german
+    if (!buttons.length) {
+        buttons = looks(rootnode, '[role="button"]', 'textContent', 'Mehr anzeigen');
+    }
 
     if (!buttons.length) return [];
 
