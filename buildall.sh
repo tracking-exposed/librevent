@@ -18,4 +18,3 @@ echo "npm run watch"
 echo "and load in your browser as developer mode, the extension from './extension/build' folder"
 echo "know more at https://libr.events/development"
 
-
