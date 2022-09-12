@@ -37,12 +37,14 @@ const hashmap = [
 ];
 
 function seemore (rootnode) {
-    // try english
-    let buttons = looks(rootnode, '[role="button"]', 'textContent', 'See more');
 
-    // try german
-    if (!buttons.length) {
-        buttons = looks(rootnode, '[role="button"]', 'textContent', 'Mehr anzeigen');
+    const seemores = ['See more', 'Mehr anzeigen', 'Altro...', 'Voir plus', 'Ver más', 'Ver mais'];
+
+    for (const item of seemores) {
+      var buttons = looks(rootnode, '[role="button"]', 'textContent', item);
+      if (buttons.length) {
+        break;
+      }
     }
 
     if (!buttons.length) return [];
@@ -135,7 +137,7 @@ function title (node) {
 
 function description (node) {
     /* by analysis the second element h2 is 'details' so we can get above
-     * the parentNodes till we found the actual description box 
+     * the parentNodes till we found the actual description box
         0 H2, 210
         Details
         1 DIV, 292
