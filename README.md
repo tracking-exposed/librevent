@@ -1,12 +1,13 @@
-# Librevent 
+# DISCONTINUATION NOTICE
+
+This repository is discontinued; It has been moved as part of the _Data Liberation Network_ to a different server: https://0xacab.org/daline/librevent
+
+---
+
+
+### Librevent 
 
 This project is better explain at the website [libr.events](https://libr.events), which is a complex plan that include this software, in conjunction with [mobilizon](https://joinmobilizon.org); A package developed for the same purpose is [mobilizon-poster](https://github.com/vecna/mobilizon-poster).
-
-## Getting ready
-
-```
-sh ./buildall.sh
-```
 
 ### What's interoperability ? 
 
